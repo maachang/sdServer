@@ -522,8 +522,7 @@
                 limit: limit,
                 offset: currentOffset
             });
-            const res = await fetch(`/api/images?${params.toString()}`);
-            const data = await res.json();
+            const data = await jhtml.api.get(`/api/images?${params.toString()}`);
 
             loading.style.display = 'none';
 
@@ -641,12 +640,7 @@
         if (!confirm('この画像を削除しますか？')) return;
 
         try {
-            const res = await fetch('/api/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
-            });
-            const data = await res.json();
+            const data = await jhtml.api.post('/api/delete', { id });
             if (data.success) {
                 showToast('画像を削除しました', 'success');
                 loadImages(currentOffset);

@@ -1059,12 +1059,7 @@
         if (!text || !text.trim()) return '';
         showOverlay('プロンプトを翻訳中...', '英語へ直訳変換しています。<br>しばらくお待ちください。');
         try {
-            const res = await fetch('/api/translate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text.trim() })
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/translate', { text: text.trim() });
             if (json.success && json.translatedText) {
                 return json.translatedText;
             }
@@ -1094,17 +1089,12 @@
         const selectedTheme = document.getElementById('themeSelect')?.value || '';
         showOverlay('✨ AIプロンプト最適化中...', '選択中サーバー・テーマに合わせて構図・プロンプト・ネガティブを最適化しています...<br>しばらくお待ちください。');
         try {
-            const res = await fetch('/api/assist', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: text,
-                    negative_prompt: negEl.value.trim(),
-                    serverId: selectedServerId,
-                    theme: selectedTheme
-                })
+            const json = await jhtml.api.post('/api/assist', {
+                prompt: text,
+                negative_prompt: negEl.value.trim(),
+                serverId: selectedServerId,
+                theme: selectedTheme
             });
-            const json = await res.json();
             if (json.success && json.prompt) {
                 const optimizedPrompt = json.prompt;
                 const optimizedNeg = json.negative_prompt || '';
@@ -1264,8 +1254,7 @@
     // 設定ロード
     async function loadConfig() {
         try {
-            const res = await fetch('/api/config');
-            const data = await res.json();
+            const data = await jhtml.api.get('/api/config');
             if (!data.success) return;
 
             const opts = data.options || {};
@@ -1436,8 +1425,7 @@
             document.getElementById('parentId').value = currentEditId;
 
             try {
-                const res = await fetch(`/api/image?id=${currentEditId}`);
-                const json = await res.json();
+                const json = await jhtml.api.get(`/api/image?id=${currentEditId}`);
                 if (json.success && json.data) {
                     const item = json.data;
                     applyParams(item);
@@ -1511,10 +1499,13 @@
 
     // 手動キャンセルボタン
     document.getElementById('cancelBtn').addEventListener('click', async () => {
-        if (pollInterval) {
+        if (typeof pollInterval === 'function') {
+            pollInterval();
+        } else if (pollInterval) {
             clearInterval(pollInterval);
-            pollInterval = null;
         }
+        pollInterval = null;
+
         if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
@@ -1525,11 +1516,7 @@
 
         if (taskIdToCancel) {
             try {
-                await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'cancel', taskId: taskIdToCancel })
-                });
+                await jhtml.api.post('/api/generate', { action: 'cancel', taskId: taskIdToCancel });
             } catch (e) {}
         }
 
@@ -1647,12 +1634,7 @@
         const manualSaveBtn = document.getElementById('manualSaveBtn');
 
         try {
-            const res = await fetch('/api/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/save', payload);
             if (json.success && json.data) {
                 lastGeneratedData.saved = true;
                 lastGeneratedData.data = json.data;
@@ -1668,33 +1650,40 @@
                 window.history.replaceState(null, '', newUrl.toString());
 
                 // UIのバッジやアラートを編集モード状態へ更新
-                document.getElementById('pageModeBadge').textContent = `画像編集 (元画像 #${savedId})`;
+                const modeBadge = document.getElementById('pageModeBadge');
+                if (modeBadge) modeBadge.textContent = `画像編集 (元画像 #${savedId})`;
                 document.getElementById('editAlert').style.display = 'block';
                 document.getElementById('parentId').value = savedId;
                 
-                statusBar.className = 'save-status-bar status-saved';
-                statusText.textContent = wasEdit ? `💾 元画像（#${savedId}）を上書き保存（変更）しました` : `💾 ギャラリーに保存されました (#${savedId})`;
-                manualSaveBtn.style.display = 'none';
-                statusBar.style.display = 'flex';
+                if (statusBar) statusBar.className = 'save-status-bar status-saved';
+                if (statusText) statusText.textContent = wasEdit ? '✅ 元画像の上書き保存が完了しました' : '✅ ギャラリーへ新規保存が完了しました';
+                if (manualSaveBtn) manualSaveBtn.style.display = 'none';
+                if (statusBar) statusBar.style.display = 'flex';
                 
                 document.getElementById('downloadBtn').href = json.data.image_path;
-                showToast(wasEdit ? '元画像を上書き保存しました' : 'ギャラリーに保存しました', 'success');
+                showToast(wasEdit ? '元画像を上書き保存しました' : '画像をギャラリーに保存しました', 'success');
             } else {
                 showToast('保存に失敗しました: ' + (json.error || '不明なエラー'), 'error');
             }
         } catch (e) {
-            showToast('保存通信エラー: ' + e.message, 'error');
+            showToast('通信エラー: ' + e.message, 'error');
         }
     }
 
-    // 「今すぐ保存する」ボタン（後から保存したくなった場合）
-    document.getElementById('manualSaveBtn').addEventListener('click', async () => {
+    // 手動「💾 この画像を保存」ボタン
+    document.getElementById('manualSaveBtn')?.addEventListener('click', async () => {
         await saveImageToServer();
     });
 
-    // 生成フォーム送信 (非同期タスク・ポーリング方式)
-    document.getElementById('genForm').addEventListener('submit', async (e) => {
+    // フォーム送信（画像生成実行）
+    document.getElementById('generateForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) {
+            showToast('プロンプトを入力してください', 'warning');
+            return;
+        }
 
         const submitBtn = document.getElementById('submitBtn');
         const cancelBtn = document.getElementById('cancelBtn');
@@ -1736,7 +1725,7 @@
         const selectedTheme = document.getElementById('themeSelect')?.value || '';
         const payload = {
             serverId: document.getElementById('sdServerSelect')?.value || null,
-            prompt: document.getElementById('prompt').value.trim(),
+            prompt: prompt,
             negative_prompt: document.getElementById('negativePrompt').value.trim(),
             promptMode: isAssist ? 'assist' : 'direct',
             promptAssist: isAssist,
@@ -1753,13 +1742,8 @@
 
         try {
             // 生成リクエスト開始（taskId を即時取得）
-            const res = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            const initData = await jhtml.api.post('/api/generate', payload);
 
-            const initData = await res.json();
             if (!initData.success) {
                 clearInterval(timerInterval);
                 loadingIndicator.style.display = 'none';
@@ -1777,23 +1761,19 @@
 
             currentTaskId = initData.taskId;
 
-            // 1秒おきにサーバー側タスクの進行状態をポーリング
-            pollInterval = setInterval(async () => {
+            // jhtml.poll によるサーバー側タスク進行状態のポーリング (1秒間隔)
+            pollInterval = jhtml.poll(async () => {
+                if (!currentTaskId) return true; // 終了
+
                 try {
-                    if (!currentTaskId) {
-                        clearInterval(pollInterval);
-                        return;
-                    }
-                    const pollRes = await fetch(`/api/generate?taskId=${currentTaskId}`);
-                    const data = await pollRes.json();
+                    const data = await jhtml.api.get(`/api/generate?taskId=${currentTaskId}`);
 
                     if (data.status === 'running') {
-                        // 実行中（継続）
-                        return;
+                        return false; // 継続
                     }
 
                     // 完了または失敗
-                    clearInterval(pollInterval);
+                    if (typeof pollInterval === 'function') pollInterval();
                     pollInterval = null;
                     clearInterval(timerInterval);
                     timerInterval = null;
@@ -1808,7 +1788,7 @@
                         errorBox.textContent = `${msg} (エラーまでの経過時間: ${spentSec}秒)`;
                         errorBox.style.display = 'block';
                         emptyPreview.style.display = 'block';
-                        return;
+                        return true;
                     }
 
                     // 成功時
@@ -1849,19 +1829,20 @@
                         translatedPromptRow.style.display = 'block';
                     }
 
+                    resultImage.src = data.image_path;
+                    resultImage.style.display = 'block';
+                    downloadBtn.href = data.image_path;
+                    resultActions.style.display = 'flex';
                     resultMeta.style.display = 'block';
 
-                    resultImage.src = data.imageDataUrl;
-                    resultImage.style.display = 'block';
-                    downloadBtn.href = data.imageDataUrl;
-                    resultActions.style.display = 'flex';
-
-                    showSaveModal(data.imageDataUrl);
-
+                    // 保存確認ダイアログの表示
+                    showSaveModal(data.image_path);
+                    return true;
                 } catch (pollErr) {
                     console.error('Polling error:', pollErr);
+                    return false;
                 }
-            }, 1000);
+            }, { interval: 1000 });
 
         } catch (e) {
             clearInterval(timerInterval);

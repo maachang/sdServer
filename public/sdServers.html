@@ -515,8 +515,7 @@
 
     async function loadServers() {
         try {
-            const res = await fetch('/api/sdServers');
-            const json = await res.json();
+            const json = await jhtml.api.get('/api/sdServers');
             if (!json.success) {
                 showAlert('設定の読み込みに失敗しました: ' + (json.error || ''), true);
                 return;
@@ -535,7 +534,7 @@
         listEl.innerHTML = '';
 
         const servers = serverConfig.servers || [];
-        const activeId = serverConfig.activeServer || (servers[0] ? servers[0].id : '');
+        const activeId = serverConfig.activeServer || (servers[0] ? servers[0].id : null);
 
         // バナー更新
         const activeServer = servers.find(s => s.id === activeId) || servers[0];
@@ -622,12 +621,7 @@
 
     async function setActive(serverId) {
         try {
-            const res = await fetch('/api/sdServers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'setActive', serverId })
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/sdServers', { action: 'setActive', serverId });
             if (json.success) {
                 showAlert(json.message || 'デフォルトサーバーを変更しました');
                 localStorage.setItem('sd_server_id', serverId);
@@ -644,12 +638,7 @@
     async function deleteServer(serverId) {
         if (!confirm(`SD サーバー [${serverId}] を削除しますか？`)) return;
         try {
-            const res = await fetch('/api/sdServers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'deleteServer', serverId })
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/sdServers', { action: 'deleteServer', serverId });
             if (json.success) {
                 showAlert(json.message || 'サーバーを削除しました');
                 serverConfig = json.data;
@@ -675,16 +664,11 @@
         }
 
         try {
-            const res = await fetch('/api/sdServers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'testConnection',
-                    baseUrl: srv.baseUrl,
-                    endpoint: srv.endpoint
-                })
+            const json = await jhtml.api.post('/api/sdServers', {
+                action: 'testConnection',
+                baseUrl: srv.baseUrl,
+                endpoint: srv.endpoint
             });
-            const json = await res.json();
             if (json.success) {
                 if (resultEl) {
                     resultEl.style.background = '#dcfce7';
@@ -817,12 +801,7 @@
         modalTestResult.textContent = '⏳ 接続テスト中...';
 
         try {
-            const res = await fetch('/api/sdServers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'testConnection', baseUrl, endpoint })
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/sdServers', { action: 'testConnection', baseUrl, endpoint });
             if (json.success) {
                 modalTestResult.style.background = '#dcfce7';
                 modalTestResult.style.color = '#166534';
@@ -868,22 +847,17 @@
         if (defSampler) serverDefaults.sampler_name = defSampler;
 
         try {
-            const res = await fetch('/api/sdServers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'saveServer',
-                    id,
-                    name,
-                    modelType,
-                    baseUrl,
-                    endpoint,
-                    timeoutMs: timeoutSec * 1000,
-                    description,
-                    defaults: Object.keys(serverDefaults).length > 0 ? serverDefaults : null
-                })
+            const json = await jhtml.api.post('/api/sdServers', {
+                action: 'saveServer',
+                id,
+                name,
+                modelType,
+                baseUrl,
+                endpoint,
+                timeoutMs: timeoutSec * 1000,
+                description,
+                defaults: Object.keys(serverDefaults).length > 0 ? serverDefaults : null
             });
-            const json = await res.json();
             if (json.success) {
                 showAlert(json.message || 'サーバーを保存しました');
                 modal.style.display = 'none';
@@ -910,12 +884,7 @@
         };
 
         try {
-            const res = await fetch('/api/sdServers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/sdServers', payload);
             if (json.success) {
                 showAlert(json.message || '共通既定パラメータを保存しました');
                 serverConfig = json.data;

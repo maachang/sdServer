@@ -461,11 +461,10 @@
     }
 
     function startProgressPolling() {
-        if (progressPollingTimer) clearInterval(progressPollingTimer);
-        progressPollingTimer = setInterval(async () => {
+        stopProgressPolling();
+        progressPollingTimer = jhtml.poll(async () => {
             try {
-                const res = await fetch('/api/models?action=progress');
-                const json = await res.json();
+                const json = await jhtml.api.get('/api/models?action=progress');
                 if (json.success && json.data) {
                     const p = json.data;
                     if (p.file) overlayFile.textContent = `ファイル: ${p.file}`;
@@ -476,14 +475,17 @@
                     if (p.message) progressMessage.textContent = p.message;
                 }
             } catch (e) {}
-        }, 300);
+            return false;
+        }, { interval: 300 });
     }
 
     function stopProgressPolling() {
-        if (progressPollingTimer) {
+        if (typeof progressPollingTimer === 'function') {
+            progressPollingTimer();
+        } else if (progressPollingTimer) {
             clearInterval(progressPollingTimer);
-            progressPollingTimer = null;
         }
+        progressPollingTimer = null;
     }
 
     async function openDeleteModal({ title, desc, showCacheOption, cacheSizeFormatted, onConfirm }) {
@@ -528,8 +530,7 @@
         listEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">読み込み中...</div>';
 
         try {
-            const res = await fetch('/api/models');
-            const json = await res.json();
+            const json = await jhtml.api.get('/api/models');
             if (!json.success || !json.data) return;
 
             const { provider, activeModel, models, orphanCaches, external, openai } = json.data;
@@ -608,8 +609,7 @@
     async function switchModel(modelId) {
         showLoading(`[${modelId}] をロード中...`);
         try {
-            const res = await fetch('/api/models?action=switch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=switch', { modelId });
             hideLoading();
             if (json.success) { showAlert(`ローカルLLMを [${modelId}] に切り替え、有効化しました！`); loadModels(); }
             else showAlert(`切り替え失敗: ${json.error}`, true);
@@ -618,8 +618,7 @@
 
     document.getElementById('activateLocalBtn')?.addEventListener('click', async () => {
         try {
-            const res = await fetch('/api/models?action=switchProvider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'local' }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=switchProvider', { provider: 'local' });
             if (json.success) { showAlert('ローカルLLM (Transformers.js) を有効化しました！'); loadModels(); }
             else showAlert(`切り替え失敗: ${json.error}`, true);
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
@@ -644,12 +643,7 @@
         fetchBtn.innerHTML = '⏳ 取得中...';
 
         try {
-            const res = await fetch('/api/models?action=fetchModels', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider: 'external', endpoint, apiKey })
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=fetchModels', { provider: 'external', endpoint, apiKey });
             if (json.success && json.data?.models?.length > 0) {
                 const models = json.data.models;
                 selectEl.innerHTML = jhtml.html`
@@ -709,8 +703,7 @@
         resultBox.style.background = '#f3f4f6'; resultBox.style.color = '#374151'; resultBox.style.border = '1px solid #d1d5db';
         resultBox.innerHTML = '⏳ 外部サーバーに接続テスト中...'; resultBox.style.display = 'block';
         try {
-            const res = await fetch('/api/models?action=testConnection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'external', endpoint, model, apiKey }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=testConnection', { provider: 'external', endpoint, model, apiKey });
             if (json.success) {
                 resultBox.style.background = '#f0fdf4'; resultBox.style.color = '#166534'; resultBox.style.border = '1px solid #bbf7d0';
                 resultBox.innerHTML = jhtml.html`✅ <strong>接続成功！</strong> サーバー応答: <code>${json.data.reply}</code>`;
@@ -730,11 +723,10 @@
         const apiKey = document.getElementById('extApiKey').value.trim();
         if (!endpoint) { showToast('エンドポイント URL を入力してください', 'warning'); return; }
         try {
-            const res = await fetch('/api/models?action=saveExternal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint, model, apiKey }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=saveExternal', { endpoint, model, apiKey });
             if (!json.success) { showAlert(`保存失敗: ${json.error}`, true); return; }
             if (enable) {
-                await fetch('/api/models?action=switchProvider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'external' }) });
+                await jhtml.api.post('/api/models?action=switchProvider', { provider: 'external' });
                 showAlert('外部LLMサーバー設定を保存し、有効化しました！');
             } else { showAlert('外部LLMサーバー設定を保存しました'); }
             loadModels();
@@ -759,12 +751,7 @@
         fetchBtn.innerHTML = '⏳ 取得中...';
 
         try {
-            const res = await fetch('/api/models?action=fetchModels', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider: 'openai', apiKey })
-            });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=fetchModels', { provider: 'openai', apiKey });
             if (json.success && json.data?.models?.length > 0) {
                 const models = json.data.models;
                 const currentVal = selectEl.value;
@@ -806,8 +793,7 @@
         resultBox.style.background = '#f3f4f6'; resultBox.style.color = '#374151'; resultBox.style.border = '1px solid #d1d5db';
         resultBox.innerHTML = '⏳ OpenAI API に接続テスト中...'; resultBox.style.display = 'block';
         try {
-            const res = await fetch('/api/models?action=testConnection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'openai', apiKey, model }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=testConnection', { provider: 'openai', apiKey, model });
             if (json.success) {
                 resultBox.style.background = '#f0fdf4'; resultBox.style.color = '#166534'; resultBox.style.border = '1px solid #bbf7d0';
                 resultBox.innerHTML = jhtml.html`✅ <strong>接続成功！</strong> OpenAI応答: <code>${json.data.reply}</code>`;
@@ -827,11 +813,10 @@
         const model = (mSelect === 'custom') ? document.getElementById('oaiCustomModel').value.trim() : mSelect;
         if (!apiKey) { showToast('OpenAI API キーを入力してください', 'warning'); return; }
         try {
-            const res = await fetch('/api/models?action=saveOpenAI', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey, model }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=saveOpenAI', { apiKey, model });
             if (!json.success) { showAlert(`保存失敗: ${json.error}`, true); return; }
             if (enable) {
-                await fetch('/api/models?action=switchProvider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'openai' }) });
+                await jhtml.api.post('/api/models?action=switchProvider', { provider: 'openai' });
                 showAlert('OpenAI 設定を保存し、有効化しました！');
             } else { showAlert('OpenAI 設定を保存しました'); }
             loadModels();
@@ -848,8 +833,7 @@
             onConfirm: async () => {
                 showLoading('削除中...');
                 try {
-                    const res = await fetch('/api/models?action=deleteCache', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId }) });
-                    const json = await res.json();
+                    const json = await jhtml.api.post('/api/models?action=deleteCache', { modelId });
                     hideLoading();
                     if (json.success) { showAlert(`キャッシュを削除しました (${cacheSize} 解放)`); loadModels(); }
                     else showAlert(`失敗: ${json.error}`, true);
@@ -867,8 +851,7 @@
             onConfirm: async (deleteCache) => {
                 showLoading('モデルを削除中...');
                 try {
-                    const res = await fetch('/api/models?action=delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId, deleteCache }) });
-                    const json = await res.json();
+                    const json = await jhtml.api.post('/api/models?action=delete', { modelId, deleteCache });
                     hideLoading();
                     if (json.success) { showAlert(json.message || `モデルを削除しました`); loadModels(); }
                     else showAlert(`削除失敗: ${json.error}`, true);
@@ -885,8 +868,7 @@
             onConfirm: async () => {
                 showLoading('削除中...');
                 try {
-                    const res = await fetch('/api/models?action=deleteCache', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId }) });
-                    const json = await res.json();
+                    const json = await jhtml.api.post('/api/models?action=deleteCache', { modelId });
                     hideLoading();
                     if (json.success) { showAlert('キャッシュを完全消去しました'); loadModels(); }
                     else showAlert(`失敗: ${json.error}`, true);
@@ -897,8 +879,7 @@
 
     async function restoreOrphanModel(modelId) {
         try {
-            const res = await fetch('/api/models?action=add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId, name: modelId.split('/').pop(), description: 'キャッシュから再登録', dtype: 'q4', task: 'text-generation' }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=add', { modelId, name: modelId.split('/').pop(), description: 'キャッシュから再登録', dtype: 'q4', task: 'text-generation' });
             if (json.success) { showAlert('再登録しました'); loadModels(); }
             else showAlert(`再登録失敗: ${json.error}`, true);
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
@@ -913,8 +894,7 @@
         const task = document.getElementById('modelTask').value;
         if (!modelId) return;
         try {
-            const res = await fetch('/api/models?action=add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelId, name, description, dtype, task }) });
-            const json = await res.json();
+            const json = await jhtml.api.post('/api/models?action=add', { modelId, name, description, dtype, task });
             if (json.success) { showAlert(`モデル [${modelId}] を追加しました`); document.getElementById('addModelForm').reset(); loadModels(); }
             else showAlert(`追加失敗: ${json.error}`, true);
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
