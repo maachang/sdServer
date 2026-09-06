@@ -407,38 +407,46 @@
 </script>
 
 <script>
-    const overlay = document.getElementById('loadingOverlay');
-    const overlayTitle = document.getElementById('overlayTitle');
-    const overlayFile = document.getElementById('overlayFile');
-    const progressBarFill = document.getElementById('progressBarFill');
-    const progressPercent = document.getElementById('progressPercent');
-    const progressMessage = document.getElementById('progressMessage');
-    const statusAlert = document.getElementById('statusAlert');
-
-    const activeProviderTitle = document.getElementById('activeProviderTitle');
-    const activeProviderDetail = document.getElementById('activeProviderDetail');
-
-    const deleteModal = document.getElementById('deleteModal');
-    const deleteModalContainer = document.getElementById('deleteModalContainer');
+    const {
+        loadingOverlay: overlay, overlayTitle, overlayFile, progressBarFill, progressPercent, progressMessage,
+        statusAlert, activeProviderTitle, activeProviderDetail, deleteModal, deleteModalContainer,
+        modelList: listEl, orphanCacheCard, orphanCacheList, localActivateHeader,
+        extEndpoint, extModel, extApiKey, extModelSelect, extFetchModelsBtn, extFetchNote, extTestBtn, extTestResult,
+        extSaveAndEnableBtn, extSaveOnlyBtn,
+        oaiApiKey, oaiModelSelect, oaiCustomModel, oaiFetchModelsBtn, oaiTestBtn, oaiTestResult,
+        oaiSaveAndEnableBtn, oaiSaveOnlyBtn,
+        activateLocalBtn, addModelForm, globalRefreshBtn
+    } = jhtml.refs(
+        'loadingOverlay', 'overlayTitle', 'overlayFile', 'progressBarFill', 'progressPercent', 'progressMessage',
+        'statusAlert', 'activeProviderTitle', 'activeProviderDetail', 'deleteModal', 'deleteModalContainer',
+        'modelList', 'orphanCacheCard', 'orphanCacheList', 'localActivateHeader',
+        'extEndpoint', 'extModel', 'extApiKey', 'extModelSelect', 'extFetchModelsBtn', 'extFetchNote', 'extTestBtn', 'extTestResult',
+        'extSaveAndEnableBtn', 'extSaveOnlyBtn',
+        'oaiApiKey', 'oaiModelSelect', 'oaiCustomModel', 'oaiFetchModelsBtn', 'oaiTestBtn', 'oaiTestResult',
+        'oaiSaveAndEnableBtn', 'oaiSaveOnlyBtn',
+        'activateLocalBtn', 'addModelForm', 'globalRefreshBtn'
+    );
     let progressPollingTimer = null;
     let currentProvider = 'local';
 
     // タブ切り替え
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    jhtml.$$('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            jhtml.$$('.tab-btn').forEach(b => b.classList.remove('active'));
+            jhtml.$$('.tab-pane').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
-            document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
+            const targetPane = jhtml.$(btn.getAttribute('data-tab'));
+            if (targetPane) targetPane.classList.add('active');
         });
     });
 
     function showAlert(msg, isError = false) {
+        if (!statusAlert) return;
         statusAlert.className = `alert-box ${isError ? 'alert-error' : 'alert-success'}`;
         statusAlert.textContent = msg;
-        statusAlert.style.display = 'block';
+        jhtml.show(statusAlert);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => { statusAlert.style.display = 'none'; }, 5000);
+        setTimeout(() => { jhtml.hide(statusAlert); }, 5000);
 
         if (window.showToast) {
             window.showToast(msg, isError ? 'error' : 'success');
@@ -446,18 +454,18 @@
     }
 
     function showLoading(title) {
-        overlayTitle.textContent = title || 'モデルをロード中...';
-        overlayFile.textContent = '';
-        progressBarFill.style.width = '0%';
-        progressPercent.textContent = '0%';
-        progressMessage.textContent = '接続中...';
-        overlay.style.display = 'flex';
+        if (overlayTitle) overlayTitle.textContent = title || 'モデルをロード中...';
+        if (overlayFile) overlayFile.textContent = '';
+        if (progressBarFill) progressBarFill.style.width = '0%';
+        if (progressPercent) progressPercent.textContent = '0%';
+        if (progressMessage) progressMessage.textContent = '接続中...';
+        jhtml.show(overlay, 'flex');
         startProgressPolling();
     }
 
     function hideLoading() {
         stopProgressPolling();
-        overlay.style.display = 'none';
+        jhtml.hide(overlay);
     }
 
     function startProgressPolling() {
@@ -496,19 +504,23 @@
             cacheSizeFormatted: cacheSizeFormatted || ''
         });
 
-        document.getElementById('cancelDeleteBtn').onclick = closeDeleteModal;
-        document.getElementById('confirmDeleteBtn').onclick = async () => {
-            const checkEl = document.getElementById('deleteWithCacheCheck');
-            const deleteCacheChecked = checkEl ? checkEl.checked : false;
-            closeDeleteModal();
-            if (onConfirm) await onConfirm(deleteCacheChecked);
-        };
+        const cancelBtn = jhtml.$('cancelDeleteBtn');
+        const confirmBtn = jhtml.$('confirmDeleteBtn');
+        if (cancelBtn) cancelBtn.onclick = closeDeleteModal;
+        if (confirmBtn) {
+            confirmBtn.onclick = async () => {
+                const checkEl = jhtml.$('deleteWithCacheCheck');
+                const deleteCacheChecked = checkEl ? checkEl.checked : false;
+                closeDeleteModal();
+                if (onConfirm) await onConfirm(deleteCacheChecked);
+            };
+        }
 
-        deleteModal.style.display = 'flex';
+        jhtml.show(deleteModal, 'flex');
     }
 
     function closeDeleteModal() {
-        deleteModal.style.display = 'none';
+        jhtml.hide(deleteModal);
         deleteModalContainer.innerHTML = '';
     }
 
@@ -522,12 +534,7 @@
     });
 
     async function loadModels() {
-        const listEl = document.getElementById('modelList');
-        const orphanCard = document.getElementById('orphanCacheCard');
-        const orphanList = document.getElementById('orphanCacheList');
-        const localActivateHeader = document.getElementById('localActivateHeader');
-
-        listEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">読み込み中...</div>';
+        if (listEl) listEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">読み込み中...</div>';
 
         try {
             const json = await jhtml.api.get('/api/models');
@@ -537,52 +544,56 @@
             currentProvider = provider || 'local';
 
             if (currentProvider === 'external') {
-                activeProviderTitle.textContent = '🌐 外部LLMサーバー (OpenAI互換)';
-                activeProviderDetail.textContent = `${external?.endpoint || 'http://localhost:8080/v1'} (モデル: ${external?.model || 'default'})`;
-                localActivateHeader.style.display = 'block';
+                if (activeProviderTitle) activeProviderTitle.textContent = '🌐 外部LLMサーバー (OpenAI互換)';
+                if (activeProviderDetail) activeProviderDetail.textContent = `${external?.endpoint || 'http://localhost:8080/v1'} (モデル: ${external?.model || 'default'})`;
+                jhtml.show(localActivateHeader);
             } else if (currentProvider === 'openai') {
-                activeProviderTitle.textContent = '⚡ OpenAI API (ChatGPT)';
-                activeProviderDetail.textContent = `モデル: ${openai?.model || 'gpt-4o-mini'} (${openai?.apiKey ? 'APIキー設定済' : 'APIキー未設定'})`;
-                localActivateHeader.style.display = 'block';
+                if (activeProviderTitle) activeProviderTitle.textContent = '⚡ OpenAI API (ChatGPT)';
+                if (activeProviderDetail) activeProviderDetail.textContent = `モデル: ${openai?.model || 'gpt-4o-mini'} (${openai?.apiKey ? 'APIキー設定済' : 'APIキー未設定'})`;
+                jhtml.show(localActivateHeader);
             } else {
                 const activeModelObj = models.find(m => m.id === activeModel);
-                activeProviderTitle.textContent = '🤖 ローカルLLM (Transformers.js / ONNX)';
-                activeProviderDetail.textContent = activeModelObj ? activeModelObj.name : activeModel;
-                localActivateHeader.style.display = 'none';
+                if (activeProviderTitle) activeProviderTitle.textContent = '🤖 ローカルLLM (Transformers.js / ONNX)';
+                if (activeProviderDetail) activeProviderDetail.textContent = activeModelObj ? activeModelObj.name : activeModel;
+                jhtml.hide(localActivateHeader);
             }
 
             if (external) {
-                document.getElementById('extEndpoint').value = external.endpoint || 'http://localhost:8080/v1';
-                document.getElementById('extModel').value = external.model || 'default';
-                document.getElementById('extApiKey').value = external.apiKey || '';
+                if (extEndpoint) extEndpoint.value = external.endpoint || 'http://localhost:8080/v1';
+                if (extModel) extModel.value = external.model || 'default';
+                if (extApiKey) extApiKey.value = external.apiKey || '';
             }
 
             if (openai) {
-                document.getElementById('oaiApiKey').value = openai.apiKey || '';
-                const mSelect = document.getElementById('oaiModelSelect');
-                const customInput = document.getElementById('oaiCustomModel');
+                if (oaiApiKey) oaiApiKey.value = openai.apiKey || '';
+                const mSelect = oaiModelSelect;
+                const customInput = oaiCustomModel;
                 
                 // 既存の選択肢にあるか確認
                 let existsInSelect = false;
-                for (let i = 0; i < mSelect.options.length; i++) {
-                    if (mSelect.options[i].value === openai.model) {
-                        mSelect.selectedIndex = i;
-                        existsInSelect = true;
-                        break;
+                if (mSelect) {
+                    for (let i = 0; i < mSelect.options.length; i++) {
+                        if (mSelect.options[i].value === openai.model) {
+                            mSelect.selectedIndex = i;
+                            existsInSelect = true;
+                            break;
+                        }
                     }
-                }
 
-                if (existsInSelect) {
-                    customInput.style.display = 'none';
-                } else if (openai.model) {
-                    mSelect.value = 'custom';
-                    customInput.value = openai.model;
-                    customInput.style.display = 'block';
+                    if (existsInSelect) {
+                        jhtml.hide(customInput);
+                    } else if (openai.model) {
+                        mSelect.value = 'custom';
+                        if (customInput) {
+                            customInput.value = openai.model;
+                            jhtml.show(customInput);
+                        }
+                    }
                 }
             }
 
             if (models.length === 0) {
-                listEl.innerHTML = '<div style="color: #9ca3af; padding: 10px;">登録されているモデルがありません。</div>';
+                if (listEl) listEl.innerHTML = '<div style="color: #9ca3af; padding: 10px;">登録されているモデルがありません。</div>';
             } else {
                 const modelHtmlList = await Promise.all(models.map(m => {
                     return jhtml.render('tpl-model-item', {
@@ -591,19 +602,19 @@
                         totalCount: models.length
                     });
                 }));
-                listEl.innerHTML = modelHtmlList.join('');
+                if (listEl) listEl.innerHTML = modelHtmlList.join('');
             }
 
             if (orphanCaches && orphanCaches.length > 0) {
                 const orphanHtmlList = await Promise.all(orphanCaches.map(oc => {
                     return jhtml.render('tpl-orphan-item', oc);
                 }));
-                orphanList.innerHTML = orphanHtmlList.join('');
-                orphanCard.style.display = 'block';
+                if (orphanList) orphanList.innerHTML = orphanHtmlList.join('');
+                jhtml.show(orphanCard);
             } else {
-                orphanCard.style.display = 'none';
+                jhtml.hide(orphanCard);
             }
-        } catch (e) { listEl.innerHTML = jhtml.html`<div style="color: red;">通信エラー: ${e.message}</div>`; }
+        } catch (e) { if (listEl) listEl.innerHTML = jhtml.html`<div style="color: red;">通信エラー: ${e.message}</div>`; }
     }
 
     async function switchModel(modelId) {
@@ -616,7 +627,7 @@
         } catch (e) { hideLoading(); showAlert(`通信エラー: ${e.message}`, true); }
     }
 
-    document.getElementById('activateLocalBtn')?.addEventListener('click', async () => {
+    activateLocalBtn?.addEventListener('click', async () => {
         try {
             const json = await jhtml.api.post('/api/models?action=switchProvider', { provider: 'local' });
             if (json.success) { showAlert('ローカルLLM (Transformers.js) を有効化しました！'); loadModels(); }
@@ -625,13 +636,13 @@
     });
 
     // 外部LLM: モデル一覧取得
-    document.getElementById('extFetchModelsBtn').addEventListener('click', async () => {
-        const endpoint = document.getElementById('extEndpoint').value.trim();
-        const apiKey = document.getElementById('extApiKey').value.trim();
-        const fetchBtn = document.getElementById('extFetchModelsBtn');
-        const selectEl = document.getElementById('extModelSelect');
-        const inputEl = document.getElementById('extModel');
-        const noteEl = document.getElementById('extFetchNote');
+    extFetchModelsBtn?.addEventListener('click', async () => {
+        const endpoint = extEndpoint?.value.trim() || '';
+        const apiKey = extApiKey?.value.trim() || '';
+        const fetchBtn = extFetchModelsBtn;
+        const selectEl = extModelSelect;
+        const inputEl = extModel;
+        const noteEl = extFetchNote;
 
         if (!endpoint) {
             showToast('エンドポイント URL を入力してください', 'warning');
@@ -681,46 +692,53 @@
         }
     });
 
-    document.getElementById('extModelSelect').addEventListener('change', (e) => {
-        const inputEl = document.getElementById('extModel');
+    extModelSelect?.addEventListener('change', (e) => {
+        if (!extModel) return;
         if (e.target.value === '__custom__') {
-            inputEl.style.display = 'block';
-            inputEl.value = '';
-            inputEl.focus();
+            jhtml.show(extModel);
+            extModel.value = '';
+            extModel.focus();
         } else {
-            inputEl.style.display = 'none';
-            inputEl.value = e.target.value;
+            jhtml.hide(extModel);
+            extModel.value = e.target.value;
         }
     });
 
     // 外部LLM: 接続テスト
-    document.getElementById('extTestBtn').addEventListener('click', async () => {
-        const endpoint = document.getElementById('extEndpoint').value.trim();
-        const model = document.getElementById('extModel').value.trim();
-        const apiKey = document.getElementById('extApiKey').value.trim();
-        const resultBox = document.getElementById('extTestResult');
+    extTestBtn?.addEventListener('click', async () => {
+        const endpoint = extEndpoint?.value.trim() || '';
+        const model = extModel?.value.trim() || '';
+        const apiKey = extApiKey?.value.trim() || '';
         if (!endpoint) { showToast('エンドポイント URL を入力してください', 'warning'); return; }
-        resultBox.style.background = '#f3f4f6'; resultBox.style.color = '#374151'; resultBox.style.border = '1px solid #d1d5db';
-        resultBox.innerHTML = '⏳ 外部サーバーに接続テスト中...'; resultBox.style.display = 'block';
+        if (extTestResult) {
+            extTestResult.style.background = '#f3f4f6'; extTestResult.style.color = '#374151'; extTestResult.style.border = '1px solid #d1d5db';
+            extTestResult.innerHTML = '⏳ 外部サーバーに接続テスト中...'; jhtml.show(extTestResult);
+        }
         try {
             const json = await jhtml.api.post('/api/models?action=testConnection', { provider: 'external', endpoint, model, apiKey });
             if (json.success) {
-                resultBox.style.background = '#f0fdf4'; resultBox.style.color = '#166534'; resultBox.style.border = '1px solid #bbf7d0';
-                resultBox.innerHTML = jhtml.html`✅ <strong>接続成功！</strong> サーバー応答: <code>${json.data.reply}</code>`;
+                if (extTestResult) {
+                    extTestResult.style.background = '#f0fdf4'; extTestResult.style.color = '#166534'; extTestResult.style.border = '1px solid #bbf7d0';
+                    extTestResult.innerHTML = jhtml.html`✅ <strong>接続成功！</strong> サーバー応答: <code>${json.data.reply}</code>`;
+                }
             } else {
-                resultBox.style.background = '#fee2e2'; resultBox.style.color = '#b91c1c'; resultBox.style.border = '1px solid #fecaca';
-                resultBox.innerHTML = jhtml.html`❌ <strong>接続失敗:</strong> ${json.error}`;
+                if (extTestResult) {
+                    extTestResult.style.background = '#fee2e2'; extTestResult.style.color = '#b91c1c'; extTestResult.style.border = '1px solid #fecaca';
+                    extTestResult.innerHTML = jhtml.html`❌ <strong>接続失敗:</strong> ${json.error}`;
+                }
             }
         } catch (e) {
-            resultBox.style.background = '#fee2e2'; resultBox.style.color = '#b91c1c'; resultBox.style.border = '1px solid #fecaca';
-            resultBox.innerHTML = jhtml.html`❌ <strong>通信エラー:</strong> ${e.message}`;
+            if (extTestResult) {
+                extTestResult.style.background = '#fee2e2'; extTestResult.style.color = '#b91c1c'; extTestResult.style.border = '1px solid #fecaca';
+                extTestResult.innerHTML = jhtml.html`❌ <strong>通信エラー:</strong> ${e.message}`;
+            }
         }
     });
 
     async function saveExternalSettings(enable = false) {
-        const endpoint = document.getElementById('extEndpoint').value.trim();
-        const model = document.getElementById('extModel').value.trim() || 'default';
-        const apiKey = document.getElementById('extApiKey').value.trim();
+        const endpoint = extEndpoint?.value.trim() || '';
+        const model = extModel?.value.trim() || 'default';
+        const apiKey = extApiKey?.value.trim() || '';
         if (!endpoint) { showToast('エンドポイント URL を入力してください', 'warning'); return; }
         try {
             const json = await jhtml.api.post('/api/models?action=saveExternal', { endpoint, model, apiKey });
@@ -732,14 +750,14 @@
             loadModels();
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     }
-    document.getElementById('extSaveAndEnableBtn').addEventListener('click', () => saveExternalSettings(true));
-    document.getElementById('extSaveOnlyBtn').addEventListener('click', () => saveExternalSettings(false));
+    extSaveAndEnableBtn?.addEventListener('click', () => saveExternalSettings(true));
+    extSaveOnlyBtn?.addEventListener('click', () => saveExternalSettings(false));
 
     // OpenAI: モデル一覧取得
-    document.getElementById('oaiFetchModelsBtn').addEventListener('click', async () => {
-        const apiKey = document.getElementById('oaiApiKey').value.trim();
-        const fetchBtn = document.getElementById('oaiFetchModelsBtn');
-        const selectEl = document.getElementById('oaiModelSelect');
+    oaiFetchModelsBtn?.addEventListener('click', async () => {
+        const apiKey = oaiApiKey?.value.trim() || '';
+        const fetchBtn = oaiFetchModelsBtn;
+        const selectEl = oaiModelSelect;
 
         if (!apiKey) {
             showToast('OpenAI API キーを入力してください', 'warning');
@@ -754,16 +772,18 @@
             const json = await jhtml.api.post('/api/models?action=fetchModels', { provider: 'openai', apiKey });
             if (json.success && json.data?.models?.length > 0) {
                 const models = json.data.models;
-                const currentVal = selectEl.value;
-                selectEl.innerHTML = jhtml.html`
-                    ${models.map(m => jhtml.html`<option value="${m}">${m}</option>`)}
-                    <option value="custom">✏️ その他 (カスタムモデル指定)</option>
-                `;
+                const currentVal = selectEl?.value;
+                if (selectEl) {
+                    selectEl.innerHTML = jhtml.html`
+                        ${models.map(m => jhtml.html`<option value="${m}">${m}</option>`)}
+                        <option value="custom">✏️ その他 (カスタムモデル指定)</option>
+                    `;
 
-                if (models.includes(currentVal)) {
-                    selectEl.value = currentVal;
-                } else if (models.includes('gpt-4o-mini')) {
-                    selectEl.value = 'gpt-4o-mini';
+                    if (models.includes(currentVal)) {
+                        selectEl.value = currentVal;
+                    } else if (models.includes('gpt-4o-mini')) {
+                        selectEl.value = 'gpt-4o-mini';
+                    }
                 }
 
                 showAlert(`OpenAI から ${models.length} 件のモデルを取得しました`);
@@ -778,39 +798,50 @@
         }
     });
 
-    document.getElementById('oaiModelSelect').addEventListener('change', (e) => {
-        const customInput = document.getElementById('oaiCustomModel');
-        customInput.style.display = (e.target.value === 'custom') ? 'block' : 'none';
-        if (e.target.value === 'custom') customInput.focus();
+    oaiModelSelect?.addEventListener('change', (e) => {
+        if (!oaiCustomModel) return;
+        if (e.target.value === 'custom') {
+            jhtml.show(oaiCustomModel);
+            oaiCustomModel.focus();
+        } else {
+            jhtml.hide(oaiCustomModel);
+        }
     });
 
-    document.getElementById('oaiTestBtn').addEventListener('click', async () => {
-        const apiKey = document.getElementById('oaiApiKey').value.trim();
-        const mSelect = document.getElementById('oaiModelSelect').value;
-        const model = (mSelect === 'custom') ? document.getElementById('oaiCustomModel').value.trim() : mSelect;
-        const resultBox = document.getElementById('oaiTestResult');
+    oaiTestBtn?.addEventListener('click', async () => {
+        const apiKey = oaiApiKey?.value.trim() || '';
+        const mSelect = oaiModelSelect?.value;
+        const model = (mSelect === 'custom') ? oaiCustomModel?.value.trim() : mSelect;
         if (!apiKey) { showToast('OpenAI API キーを入力してください', 'warning'); return; }
-        resultBox.style.background = '#f3f4f6'; resultBox.style.color = '#374151'; resultBox.style.border = '1px solid #d1d5db';
-        resultBox.innerHTML = '⏳ OpenAI API に接続テスト中...'; resultBox.style.display = 'block';
+        if (oaiTestResult) {
+            oaiTestResult.style.background = '#f3f4f6'; oaiTestResult.style.color = '#374151'; oaiTestResult.style.border = '1px solid #d1d5db';
+            oaiTestResult.innerHTML = '⏳ OpenAI API に接続テスト中...'; jhtml.show(oaiTestResult);
+        }
         try {
             const json = await jhtml.api.post('/api/models?action=testConnection', { provider: 'openai', apiKey, model });
             if (json.success) {
-                resultBox.style.background = '#f0fdf4'; resultBox.style.color = '#166534'; resultBox.style.border = '1px solid #bbf7d0';
-                resultBox.innerHTML = jhtml.html`✅ <strong>接続成功！</strong> OpenAI応答: <code>${json.data.reply}</code>`;
+                if (oaiTestResult) {
+                    oaiTestResult.style.background = '#f0fdf4'; oaiTestResult.style.color = '#166534'; oaiTestResult.style.border = '1px solid #bbf7d0';
+                    oaiTestResult.innerHTML = jhtml.html`✅ <strong>接続成功！</strong> OpenAI応答: <code>${json.data.reply}</code>`;
+                }
             } else {
-                resultBox.style.background = '#fee2e2'; resultBox.style.color = '#b91c1c'; resultBox.style.border = '1px solid #fecaca';
-                resultBox.innerHTML = jhtml.html`❌ <strong>接続失敗:</strong> ${json.error}`;
+                if (oaiTestResult) {
+                    oaiTestResult.style.background = '#fee2e2'; oaiTestResult.style.color = '#b91c1c'; oaiTestResult.style.border = '1px solid #fecaca';
+                    oaiTestResult.innerHTML = jhtml.html`❌ <strong>接続失敗:</strong> ${json.error}`;
+                }
             }
         } catch (e) {
-            resultBox.style.background = '#fee2e2'; resultBox.style.color = '#b91c1c'; resultBox.style.border = '1px solid #fecaca';
-            resultBox.innerHTML = jhtml.html`❌ <strong>通信エラー:</strong> ${e.message}`;
+            if (oaiTestResult) {
+                oaiTestResult.style.background = '#fee2e2'; oaiTestResult.style.color = '#b91c1c'; oaiTestResult.style.border = '1px solid #fecaca';
+                oaiTestResult.innerHTML = jhtml.html`❌ <strong>通信エラー:</strong> ${e.message}`;
+            }
         }
     });
 
     async function saveOpenAISettings(enable = false) {
-        const apiKey = document.getElementById('oaiApiKey').value.trim();
-        const mSelect = document.getElementById('oaiModelSelect').value;
-        const model = (mSelect === 'custom') ? document.getElementById('oaiCustomModel').value.trim() : mSelect;
+        const apiKey = oaiApiKey?.value.trim() || '';
+        const mSelect = oaiModelSelect?.value;
+        const model = (mSelect === 'custom') ? oaiCustomModel?.value.trim() : mSelect;
         if (!apiKey) { showToast('OpenAI API キーを入力してください', 'warning'); return; }
         try {
             const json = await jhtml.api.post('/api/models?action=saveOpenAI', { apiKey, model });
@@ -822,8 +853,8 @@
             loadModels();
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     }
-    document.getElementById('oaiSaveAndEnableBtn').addEventListener('click', () => saveOpenAISettings(true));
-    document.getElementById('oaiSaveOnlyBtn').addEventListener('click', () => saveOpenAISettings(false));
+    oaiSaveAndEnableBtn?.addEventListener('click', () => saveOpenAISettings(true));
+    oaiSaveOnlyBtn?.addEventListener('click', () => saveOpenAISettings(false));
 
     function deleteCacheOnly(modelId, cacheSize) {
         openDeleteModal({
@@ -885,23 +916,23 @@
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     }
 
-    document.getElementById('addModelForm').addEventListener('submit', async (e) => {
+    addModelForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const modelId = document.getElementById('modelId').value.trim();
-        const name = document.getElementById('modelName').value.trim();
-        const description = document.getElementById('modelDescription').value.trim();
-        const dtype = document.getElementById('modelDtype').value;
-        const task = document.getElementById('modelTask').value;
+        const modelId = jhtml.$('modelId')?.value.trim();
+        const name = jhtml.$('modelName')?.value.trim();
+        const description = jhtml.$('modelDescription')?.value.trim();
+        const dtype = jhtml.$('modelDtype')?.value;
+        const task = jhtml.$('modelTask')?.value;
         if (!modelId) return;
         try {
             const json = await jhtml.api.post('/api/models?action=add', { modelId, name, description, dtype, task });
-            if (json.success) { showAlert(`モデル [${modelId}] を追加しました`); document.getElementById('addModelForm').reset(); loadModels(); }
+            if (json.success) { showAlert(`モデル [${modelId}] を追加しました`); addModelForm.reset(); loadModels(); }
             else showAlert(`追加失敗: ${json.error}`, true);
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     });
 
     // モデル一覧のイベント委譲（モデル切り替え・キャッシュ削除・項目削除）
-    document.getElementById('modelList')?.addEventListener('click', (e) => {
+    listEl?.addEventListener('click', (e) => {
         const switchBtn = e.target.closest('[data-action="switch"]');
         if (switchBtn) {
             const mid = switchBtn.dataset.modelId;
@@ -928,7 +959,7 @@
     });
 
     // 孤立キャッシュ一覧のイベント委譲（再追加・完全消去）
-    document.getElementById('orphanCacheList')?.addEventListener('click', (e) => {
+    orphanList?.addEventListener('click', (e) => {
         const restoreBtn = e.target.closest('[data-action="restore-orphan"]');
         if (restoreBtn) {
             const mid = restoreBtn.dataset.modelId;
@@ -945,7 +976,7 @@
         }
     });
 
-    document.getElementById('globalRefreshBtn').addEventListener('click', loadModels);
+    globalRefreshBtn?.addEventListener('click', loadModels);
 
     loadModels();
 </script>

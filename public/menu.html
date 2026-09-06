@@ -578,8 +578,16 @@
 
 <script>
     let currentOffset = 0;
-    const { perPageSelect, imageGrid, loadingState, emptyState, resultCount, paginationTopContainer, paginationContainer } = jhtml.refs(
-        'perPageSelect', 'imageGrid', 'loadingState', 'emptyState', 'resultCount', 'paginationTopContainer', 'paginationContainer'
+    const {
+        perPageSelect, imageGrid, loadingState, emptyState, resultCount,
+        paginationTopContainer, paginationContainer,
+        paginationTopInfo, paginationTopControls, paginationInfo, paginationControls,
+        previewModal, previewModalBox, searchInput, searchBtn, clearBtn
+    } = jhtml.refs(
+        'perPageSelect', 'imageGrid', 'loadingState', 'emptyState', 'resultCount',
+        'paginationTopContainer', 'paginationContainer',
+        'paginationTopInfo', 'paginationTopControls', 'paginationInfo', 'paginationControls',
+        'previewModal', 'previewModalBox', 'searchInput', 'searchBtn', 'clearBtn'
     );
     const savedLimit = parseInt(localStorage.getItem('images_per_page') || perPageSelect?.value, 10) || 20;
     let limit = savedLimit;
@@ -595,8 +603,8 @@
         }
 
         imageGrid.innerHTML = '';
-        loadingState.style.display = 'block';
-        emptyState.style.display = 'none';
+        jhtml.show(loadingState);
+        jhtml.hide(emptyState);
 
         try {
             const params = new URLSearchParams({
@@ -606,7 +614,7 @@
             });
             const data = await jhtml.api.get(`/api/images?${params.toString()}`);
 
-            loadingState.style.display = 'none';
+            jhtml.hide(loadingState);
 
             if (!data.success) {
                 showToast('画像取得エラー: ' + (data.error || '不明なエラー'), 'error');
@@ -615,9 +623,9 @@
 
             if (data.total === 0) {
                 resultCount.textContent = '0 件';
-                emptyState.style.display = 'block';
-                if (paginationTopContainer) paginationTopContainer.style.display = 'none';
-                if (paginationContainer) paginationContainer.style.display = 'none';
+                jhtml.show(emptyState);
+                jhtml.hide(paginationTopContainer);
+                jhtml.hide(paginationContainer);
                 return;
             }
 
@@ -626,9 +634,9 @@
             resultCount.textContent = `全 ${data.total} 件中 ${startNum}〜${endNum} 件を表示`;
 
             if (data.items.length === 0) {
-                emptyState.style.display = 'block';
-                if (paginationTopContainer) paginationTopContainer.style.display = 'none';
-                if (paginationContainer) paginationContainer.style.display = 'none';
+                jhtml.show(emptyState);
+                jhtml.hide(paginationTopContainer);
+                jhtml.hide(paginationContainer);
                 return;
             }
 
@@ -657,25 +665,17 @@
             await renderPagination(data.total, data.limit, data.offset);
 
         } catch (e) {
-            loadingState.style.display = 'none';
+            jhtml.hide(loadingState);
             showToast('通信エラー: ' + e.message, 'error');
         }
     }
 
     async function renderPagination(total, limit, offset) {
-        const topContainer = document.getElementById('paginationTopContainer');
-        const topInfoEl = document.getElementById('paginationTopInfo');
-        const topControlsEl = document.getElementById('paginationTopControls');
-
-        const bottomContainer = document.getElementById('paginationContainer');
-        const bottomInfoEl = document.getElementById('paginationInfo');
-        const bottomControlsEl = document.getElementById('paginationControls');
-
         const totalPages = Math.ceil(total / limit);
 
         if (totalPages <= 1) {
-            if (topContainer) topContainer.style.display = 'none';
-            if (bottomContainer) bottomContainer.style.display = 'none';
+            jhtml.hide(paginationTopContainer);
+            jhtml.hide(paginationContainer);
             return;
         }
 
@@ -689,16 +689,18 @@
             pages
         });
 
-        if (topContainer && topInfoEl && topControlsEl) {
-            topInfoEl.innerHTML = infoHtml;
-            topControlsEl.innerHTML = paginationButtonsHtml;
-            topContainer.style.display = 'flex';
+        if (paginationTopContainer && paginationTopInfo && paginationTopControls) {
+            paginationTopInfo.innerHTML = infoHtml;
+            paginationTopControls.innerHTML = paginationButtonsHtml;
+            jhtml.show(paginationTopContainer);
+            paginationTopContainer.style.display = 'flex';
         }
 
-        if (bottomContainer && bottomInfoEl && bottomControlsEl) {
-            bottomInfoEl.innerHTML = infoHtml;
-            bottomControlsEl.innerHTML = paginationButtonsHtml;
-            bottomContainer.style.display = 'flex';
+        if (paginationContainer && paginationInfo && paginationControls) {
+            paginationInfo.innerHTML = infoHtml;
+            paginationControls.innerHTML = paginationButtonsHtml;
+            jhtml.show(paginationContainer);
+            paginationContainer.style.display = 'flex';
         }
     }
 
@@ -743,32 +745,29 @@
         const item = loadedItemsMap.get(Number(id)) || loadedItemsMap.get(String(id));
         if (!item) return;
 
-        const modalBox = document.getElementById('previewModalBox');
-        if (modalBox) {
-            modalBox.innerHTML = await jhtml.render('tpl-preview-modal', item);
+        if (previewModalBox) {
+            previewModalBox.innerHTML = await jhtml.render('tpl-preview-modal', item);
         }
-        document.getElementById('previewModal').classList.add('open');
+        if (previewModal) previewModal.classList.add('open');
     }
 
     function closeModal() {
-        const modal = document.getElementById('previewModal');
-        if (modal) {
-            modal.classList.remove('open');
+        if (previewModal) {
+            previewModal.classList.remove('open');
         }
     }
 
     // プレビューモーダルのイベント（背景クリック・閉じるボタン・Escapeキー）
-    const previewModalEl = document.getElementById('previewModal');
-    if (previewModalEl) {
-        previewModalEl.addEventListener('click', (e) => {
-            if (e.target === previewModalEl || e.target.closest('[data-action="close-modal"]')) {
+    if (previewModal) {
+        previewModal.addEventListener('click', (e) => {
+            if (e.target === previewModal || e.target.closest('[data-action="close-modal"]')) {
                 closeModal();
             }
         });
     }
 
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && previewModalEl && previewModalEl.classList.contains('open')) {
+        if (e.key === 'Escape' && previewModal && previewModal.classList.contains('open')) {
             closeModal();
         }
     });
@@ -800,32 +799,29 @@
             goToPage(page);
         }
     }
-    document.getElementById('paginationTopControls')?.addEventListener('click', handlePaginationClick);
-    document.getElementById('paginationControls')?.addEventListener('click', handlePaginationClick);
+    paginationTopControls?.addEventListener('click', handlePaginationClick);
+    paginationControls?.addEventListener('click', handlePaginationClick);
 
     // 検索イベント設定
-    document.getElementById('searchBtn').addEventListener('click', () => {
-        currentKeyword = document.getElementById('searchInput').value.trim();
-        document.getElementById('clearBtn').style.display = currentKeyword ? 'inline-flex' : 'none';
+    function performSearch() {
+        currentKeyword = searchInput?.value.trim() || '';
+        if (clearBtn) clearBtn.style.display = currentKeyword ? 'inline-flex' : 'none';
         loadImages(0);
+    }
+
+    searchBtn?.addEventListener('click', performSearch);
+    searchInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performSearch();
     });
 
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            currentKeyword = document.getElementById('searchInput').value.trim();
-            document.getElementById('clearBtn').style.display = currentKeyword ? 'inline-flex' : 'none';
-            loadImages(0);
-        }
-    });
-
-    document.getElementById('clearBtn').addEventListener('click', () => {
-        document.getElementById('searchInput').value = '';
+    clearBtn?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
         currentKeyword = '';
-        document.getElementById('clearBtn').style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
         loadImages(0);
     });
 
-    document.getElementById('perPageSelect').addEventListener('change', (e) => {
+    perPageSelect?.addEventListener('change', (e) => {
         limit = parseInt(e.target.value, 10) || 20;
         localStorage.setItem('images_per_page', String(limit));
         loadImages(0);
@@ -836,17 +832,16 @@
     function applyCardSize(size) {
         currentCardSize = size;
         localStorage.setItem('images_card_size', size);
-        const grid = document.getElementById('imageGrid');
-        if (grid) {
-            grid.classList.remove('grid-lg', 'grid-md', 'grid-sm');
-            grid.classList.add(`grid-${size}`);
+        if (imageGrid) {
+            imageGrid.classList.remove('grid-lg', 'grid-md', 'grid-sm');
+            imageGrid.classList.add(`grid-${size}`);
         }
-        document.querySelectorAll('.view-size-btn').forEach(btn => {
+        jhtml.$$('.view-size-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.size === size);
         });
     }
 
-    document.querySelectorAll('.view-size-btn').forEach(btn => {
+    jhtml.$$('.view-size-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             applyCardSize(btn.dataset.size);
         });

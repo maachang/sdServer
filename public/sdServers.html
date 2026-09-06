@@ -498,15 +498,19 @@
 
 <script>
     let serverConfig = null;
+    const { globalAlert, serverList: listEl, activeServerNameBanner, activeServerUrlBanner } = jhtml.refs(
+        'globalAlert', 'serverList', 'activeServerNameBanner', 'activeServerUrlBanner'
+    );
 
     function showAlert(msg, isError = false) {
-        const el = document.getElementById('globalAlert');
-        el.textContent = msg;
-        el.className = `alert-box ${isError ? 'alert-error' : 'alert-success'}`;
-        el.style.display = 'block';
-        setTimeout(() => {
-            el.style.display = 'none';
-        }, 5000);
+        if (globalAlert) {
+            globalAlert.textContent = msg;
+            globalAlert.className = `alert-box ${isError ? 'alert-error' : 'alert-success'}`;
+            jhtml.show(globalAlert);
+            setTimeout(() => {
+                jhtml.hide(globalAlert);
+            }, 5000);
+        }
 
         if (window.showToast) {
             window.showToast(msg, isError ? 'error' : 'success');
@@ -530,7 +534,7 @@
     }
 
     async function renderServers() {
-        const listEl = document.getElementById('serverList');
+        if (!listEl) return;
         listEl.innerHTML = '';
 
         const servers = serverConfig.servers || [];
@@ -539,11 +543,11 @@
         // バナー更新
         const activeServer = servers.find(s => s.id === activeId) || servers[0];
         if (activeServer) {
-            document.getElementById('activeServerNameBanner').textContent = activeServer.name || activeServer.id;
-            document.getElementById('activeServerUrlBanner').textContent = `${activeServer.baseUrl}${activeServer.endpoint}`;
+            if (activeServerNameBanner) activeServerNameBanner.textContent = activeServer.name || activeServer.id;
+            if (activeServerUrlBanner) activeServerUrlBanner.textContent = `${activeServer.baseUrl}${activeServer.endpoint}`;
         } else {
-            document.getElementById('activeServerNameBanner').textContent = '未設定';
-            document.getElementById('activeServerUrlBanner').textContent = '';
+            if (activeServerNameBanner) activeServerNameBanner.textContent = '未設定';
+            if (activeServerUrlBanner) activeServerUrlBanner.textContent = '';
         }
 
         if (servers.length === 0) {
@@ -655,9 +659,9 @@
         const srv = (serverConfig.servers || []).find(s => s.id === serverId);
         if (!srv) return;
 
-        const resultEl = document.getElementById(`testResult_${serverId}`);
+        const resultEl = jhtml.$(`testResult_${serverId}`);
         if (resultEl) {
-            resultEl.style.display = 'block';
+            jhtml.show(resultEl);
             resultEl.style.background = '#eff6ff';
             resultEl.style.color = '#1e40af';
             resultEl.textContent = '⏳ 接続テスト中...';
@@ -710,11 +714,16 @@
         srvDefHeight: srvDefHeightInput,
         srvDefSteps: srvDefStepsInput,
         srvDefCfg: srvDefCfgInput,
-        srvDefSampler: srvDefSamplerSelect
+        srvDefSampler: srvDefSamplerSelect,
+        addServerBtn,
+        modalCloseBtn,
+        modalCancelBtn,
+        modalTestBtn
     } = jhtml.refs(
         'serverModal', 'serverForm', 'serverEndpointSelect', 'serverEndpointCustom', 'modalTestResult',
         'modalTitle', 'formIsEdit', 'serverId', 'serverName', 'serverModelType', 'serverBaseUrl',
-        'serverTimeoutSec', 'serverDesc', 'srvDefWidth', 'srvDefHeight', 'srvDefSteps', 'srvDefCfg', 'srvDefSampler'
+        'serverTimeoutSec', 'serverDesc', 'srvDefWidth', 'srvDefHeight', 'srvDefSteps', 'srvDefCfg', 'srvDefSampler',
+        'addServerBtn', 'modalCloseBtn', 'modalCancelBtn', 'modalTestBtn'
     );
 
     endpointSelect.addEventListener('change', (e) => {
@@ -727,7 +736,7 @@
         }
     });
 
-    document.getElementById('addServerBtn').addEventListener('click', () => {
+    addServerBtn?.addEventListener('click', () => {
         modalTitle.textContent = '新しい SD サーバーを追加';
         formIsEdit.value = '0';
         serverIdInput.readOnly = false;
@@ -797,8 +806,8 @@
         jhtml.hide(modal);
     }
 
-    document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
-    document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+    modalCloseBtn?.addEventListener('click', closeModal);
+    modalCancelBtn?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
@@ -809,8 +818,8 @@
     });
 
     // モーダル内テスト接続
-    document.getElementById('modalTestBtn').addEventListener('click', async () => {
-        const baseUrl = document.getElementById('serverBaseUrl').value.trim();
+    modalTestBtn?.addEventListener('click', async () => {
+        const baseUrl = serverBaseUrlInput?.value.trim() || '';
         let endpoint = endpointSelect.value;
         if (endpoint === 'custom') {
             endpoint = endpointCustom.value.trim();
@@ -821,7 +830,7 @@
             return;
         }
 
-        modalTestResult.style.display = 'block';
+        jhtml.show(modalTestResult);
         modalTestResult.style.background = '#eff6ff';
         modalTestResult.style.color = '#1e40af';
         modalTestResult.textContent = '⏳ 接続テスト中...';
@@ -898,7 +907,7 @@
     });
 
     // 共通既定パラメータ保存送信
-    document.getElementById('defaultsForm').addEventListener('submit', async (e) => {
+    jhtml.$('#defaultsForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = jhtml.form('#defaultsForm');
         const payload = {

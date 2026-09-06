@@ -13,7 +13,7 @@
 
     function ensureContainer() {
         if (!toastContainer || !document.body.contains(toastContainer)) {
-            toastContainer = document.getElementById('toastContainer');
+            toastContainer = jhtml ? jhtml.$('toastContainer') : document.getElementById('toastContainer');
             if (!toastContainer) {
                 toastContainer = document.createElement('div');
                 toastContainer.id = 'toastContainer';

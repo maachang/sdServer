@@ -750,14 +750,38 @@
     // 既存の古い一次保存データがあればクリア
     try { localStorage.removeItem('sdServer_saved_params'); } catch (e) {}
 
-    const overlay = document.getElementById('translationOverlay');
-    const overlayDesc = document.getElementById('translationOverlayDesc');
-    const saveConfirmModal = document.getElementById('saveConfirmModal');
+    const {
+        translationOverlay: overlay, translationOverlayDesc: overlayDesc, saveConfirmModal,
+        translationTimer: timerEl,
+        themeSelect, themeDesc, themeBadge, themeInfoBtn, themeInfoModal,
+        sdServerGroup, sdServerSelect, sdServerEndpointBadge, sdServerDesc,
+        resolutionPreset: resSelect, sampler: samplerSelect,
+        width: widthInput, height: heightInput, steps: stepsInput, cfgScale: cfgScaleInput, seed: seedInput,
+        prompt: promptInput, negativePrompt: negativePromptInput, promptAssistCheck, parentId: parentIdInput,
+        assistPromptBtn, promptTransNotice, negTransNotice, translatePromptBtn, translateNegBtn,
+        submitBtn, cancelBtn, errorBox, loadingIndicator, emptyPreview, resultImage, resultActions, downloadBtn,
+        resultMeta, spentTimeLabel, usedSeedLabel, usedServerRow, usedServerLabel, usedThemeRow, usedThemeLabel,
+        translatedPromptRow, translatedPromptLabel, elapsedTimer, saveStatusBar, saveStatusText, manualSaveBtn,
+        editAlert, pageModeBadge
+    } = jhtml.refs(
+        'translationOverlay', 'translationOverlayDesc', 'saveConfirmModal',
+        'translationTimer',
+        'themeSelect', 'themeDesc', 'themeBadge', 'themeInfoBtn', 'themeInfoModal',
+        'sdServerGroup', 'sdServerSelect', 'sdServerEndpointBadge', 'sdServerDesc',
+        'resolutionPreset', 'sampler',
+        'width', 'height', 'steps', 'cfgScale', 'seed',
+        'prompt', 'negativePrompt', 'promptAssistCheck', 'parentId',
+        'assistPromptBtn', 'promptTransNotice', 'negTransNotice', 'translatePromptBtn', 'translateNegBtn',
+        'submitBtn', 'cancelBtn', 'errorBox', 'loadingIndicator', 'emptyPreview', 'resultImage', 'resultActions', 'downloadBtn',
+        'resultMeta', 'spentTimeLabel', 'usedSeedLabel', 'usedServerRow', 'usedServerLabel', 'usedThemeRow', 'usedThemeLabel',
+        'translatedPromptRow', 'translatedPromptLabel', 'elapsedTimer', 'saveStatusBar', 'saveStatusText', 'manualSaveBtn',
+        'editAlert', 'pageModeBadge'
+    );
 
     let translationTimerInterval = null;
 
     function showOverlay(titleText, descText) {
-        const titleEl = document.querySelector('#translationOverlay h4');
+        const titleEl = jhtml.$('#translationOverlay h4');
         if (titleEl) {
             titleEl.textContent = titleText || 'プロンプトを処理中...';
         }
@@ -765,7 +789,6 @@
             overlayDesc.innerHTML = descText || '英語へ変換しています。<br>しばらくお待ちください。';
         }
 
-        const timerEl = document.getElementById('translationTimer');
         if (timerEl) {
             timerEl.textContent = '0.0s';
             const startTime = Date.now();
@@ -776,7 +799,7 @@
             }, 100);
         }
 
-        if (overlay) overlay.style.display = 'flex';
+        jhtml.show(overlay, 'flex');
     }
 
     function hideOverlay() {
@@ -784,7 +807,7 @@
             clearInterval(translationTimerInterval);
             translationTimerInterval = null;
         }
-        if (overlay) overlay.style.display = 'none';
+        jhtml.hide(overlay);
     }
 
     async function showSaveModal(dataUrl) {
@@ -794,43 +817,40 @@
             : 'この画像を履歴ギャラリーに保存しますか？';
         const saveBtnText = currentEditId ? '💾 上書き保存する' : '💾 保存する';
 
-        saveConfirmModal.innerHTML = await jhtml.render('tpl-save-confirm', {
-            title,
-            desc,
-            dataUrl,
-            saveBtnText
-        });
+        if (saveConfirmModal) {
+            saveConfirmModal.innerHTML = await jhtml.render('tpl-save-confirm', {
+                title,
+                desc,
+                dataUrl,
+                saveBtnText
+            });
 
-        // モーダル内ボタンのイベント設定
-        document.getElementById('confirmSaveBtn')?.addEventListener('click', async () => {
-            hideSaveModal();
-            await saveImageToServer();
-        });
+            // モーダル内ボタンのイベント設定
+            jhtml.$('confirmSaveBtn')?.addEventListener('click', async () => {
+                hideSaveModal();
+                await saveImageToServer();
+            });
 
-        document.getElementById('confirmDiscardBtn')?.addEventListener('click', () => {
-            hideSaveModal();
-            const statusBar = document.getElementById('saveStatusBar');
-            const statusText = document.getElementById('saveStatusText');
-            const manualSaveBtn = document.getElementById('manualSaveBtn');
+            jhtml.$('confirmDiscardBtn')?.addEventListener('click', () => {
+                hideSaveModal();
+                if (saveStatusBar) saveStatusBar.className = 'save-status-bar status-unsaved';
+                if (saveStatusText) saveStatusText.textContent = '⚠️ 保存されていません（一時プレビュー表示中）';
+                if (manualSaveBtn) manualSaveBtn.style.display = 'inline-flex';
+                if (saveStatusBar) saveStatusBar.style.display = 'flex';
+            });
 
-            if (statusBar) statusBar.className = 'save-status-bar status-unsaved';
-            if (statusText) statusText.textContent = '⚠️ 保存されていません（一時プレビュー表示中）';
-            if (manualSaveBtn) manualSaveBtn.style.display = 'inline-flex';
-            if (statusBar) statusBar.style.display = 'flex';
-        });
-
-        saveConfirmModal.style.display = 'flex';
+            jhtml.show(saveConfirmModal, 'flex');
+        }
     }
 
     function hideSaveModal() {
-        saveConfirmModal.style.display = 'none';
-        saveConfirmModal.innerHTML = '';
+        if (saveConfirmModal) {
+            jhtml.hide(saveConfirmModal);
+            saveConfirmModal.innerHTML = '';
+        }
     }
 
     function updateThemeDetails() {
-        const themeSelect = document.getElementById('themeSelect');
-        const themeDesc = document.getElementById('themeDesc');
-        const themeBadge = document.getElementById('themeBadge');
         if (!themeSelect) return;
         
         const sel = themeSelect.options[themeSelect.selectedIndex];
@@ -922,7 +942,6 @@
     }
 
     async function showThemeInfoModal() {
-        const themeSelect = document.getElementById('themeSelect');
         const currentThemeId = themeSelect ? themeSelect.value : 'none';
 
         await renderThemeModal(currentThemeId);
@@ -957,7 +976,6 @@
             const pillBtn = e.target.closest('.theme-pill-btn');
             if (pillBtn) {
                 const tid = pillBtn.dataset.themeId;
-                const themeSelect = document.getElementById('themeSelect');
                 if (themeSelect) {
                     themeSelect.value = tid;
                     updateThemeDetails();
@@ -981,7 +999,7 @@
 
     // 選択中サーバーのdefaults（または共通デフォルト）を適用
     function applyDefaultParams(clearPrompt = false) {
-        const currentServerId = document.getElementById('sdServerSelect')?.value;
+        const currentServerId = sdServerSelect?.value;
         const currentServer = currentServers.find(s => s.id === currentServerId) || currentServers[0];
         const srvDefs = currentServer?.defaults || {};
         const defs = serverDefaults || {};
@@ -1066,25 +1084,25 @@
     let lastOriginalPrompt = '';
     let lastOriginalNeg = '';
 
-    document.getElementById('assistPromptBtn').addEventListener('click', async () => {
-        const promptEl = document.getElementById('prompt');
-        const negEl = document.getElementById('negativePrompt');
-        const notice = document.getElementById('promptTransNotice');
-        const btn = document.getElementById('assistPromptBtn');
-        const text = promptEl.value.trim();
+    assistPromptBtn?.addEventListener('click', async () => {
+        const promptEl = promptInput;
+        const negEl = negativePromptInput;
+        const notice = promptTransNotice;
+        const btn = assistPromptBtn;
+        const text = promptEl?.value.trim() || '';
         if (!text) {
             showToast('プロンプトを入力してください', 'warning');
             return;
         }
 
         btn.disabled = true;
-        const selectedServerId = document.getElementById('sdServerSelect')?.value || '';
-        const selectedTheme = document.getElementById('themeSelect')?.value || '';
+        const selectedServerId = sdServerSelect?.value || '';
+        const selectedTheme = themeSelect?.value || '';
         showOverlay('✨ AIプロンプト最適化中...', '選択中サーバー・テーマに合わせて構図・プロンプト・ネガティブを最適化しています...<br>しばらくお待ちください。');
         try {
             const json = await jhtml.api.post('/api/assist', {
                 prompt: text,
-                negative_prompt: negEl.value.trim(),
+                negative_prompt: negEl ? negEl.value.trim() : '',
                 serverId: selectedServerId,
                 theme: selectedTheme
             });
@@ -1101,48 +1119,52 @@
                 const themeItem = availableThemes.find(t => t.id === selectedTheme);
                 const themeBadgeHtml = (themeItem && themeItem.id !== 'none') ? `<span style="font-size: 11px; font-weight: 600; background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; border: 1px solid #c7d2fe; margin-left: 6px;">${themeItem.icon || '🎨'} ${jhtml.escape(themeItem.name)}</span>` : '';
 
-                notice.style.display = 'block';
-                notice.style.background = '#fdf4ff';
-                notice.style.border = '1px solid #f0abfc';
-                notice.style.color = '#86198f';
-                notice.innerHTML = await jhtml.render('tpl-assist-notice', {
-                    modelTypeLabel,
-                    optimizedPrompt,
-                    optimizedNeg
-                });
-
-                document.getElementById('closeAssistNoticeBtn')?.addEventListener('click', () => {
-                    notice.style.display = 'none';
-                });
-
-                document.getElementById('applyAssistBtn')?.addEventListener('click', () => {
-                    lastOriginalPrompt = promptEl.value;
-                    lastOriginalNeg = negEl.value;
-
-                    promptEl.value = optimizedPrompt;
-                    if (optimizedNeg) {
-                        negEl.value = optimizedNeg;
-                    }
-
-                    notice.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>✨ <strong>AI最適化を適用しました</strong></span>
-                            <button type="button" id="undoAssistBtn" class="btn-xs" style="background: #fff; color: #db2777; border-color: #f472b6; cursor: pointer;">↩️ 元に戻す</button>
-                        </div>
-                    `;
-                    document.getElementById('undoAssistBtn')?.addEventListener('click', () => {
-                        promptEl.value = lastOriginalPrompt;
-                        negEl.value = lastOriginalNeg;
-                        notice.style.display = 'none';
+                if (notice) {
+                    jhtml.show(notice);
+                    notice.style.background = '#fdf4ff';
+                    notice.style.border = '1px solid #f0abfc';
+                    notice.style.color = '#86198f';
+                    notice.innerHTML = await jhtml.render('tpl-assist-notice', {
+                        modelTypeLabel,
+                        optimizedPrompt,
+                        optimizedNeg
                     });
-                });
-            } else {
-                notice.style.display = 'block';
+
+                    jhtml.$('closeAssistNoticeBtn')?.addEventListener('click', () => {
+                        jhtml.hide(notice);
+                    });
+
+                    jhtml.$('applyAssistBtn')?.addEventListener('click', () => {
+                        lastOriginalPrompt = promptEl.value;
+                        lastOriginalNeg = negEl ? negEl.value : '';
+
+                        promptEl.value = optimizedPrompt;
+                        if (optimizedNeg && negEl) {
+                            negEl.value = optimizedNeg;
+                        }
+
+                        notice.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>✨ <strong>AI最適化を適用しました</strong></span>
+                                <button type="button" id="undoAssistBtn" class="btn-xs" style="background: #fff; color: #db2777; border-color: #f472b6; cursor: pointer;">↩️ 元に戻す</button>
+                            </div>
+                        `;
+                        jhtml.$('undoAssistBtn')?.addEventListener('click', () => {
+                            promptEl.value = lastOriginalPrompt;
+                            if (negEl) negEl.value = lastOriginalNeg;
+                            jhtml.hide(notice);
+                        });
+                    });
+                }
+            } else if (notice) {
+                jhtml.show(notice);
                 notice.textContent = 'AIプロンプト最適化に失敗しました: ' + (json.error || '不明なエラー');
             }
         } catch (e) {
-            notice.style.display = 'block';
-            notice.textContent = '通信エラーが発生しました: ' + e.message;
+            if (notice) {
+                jhtml.show(notice);
+                notice.textContent = '通信エラーが発生しました: ' + e.message;
+            }
         } finally {
             btn.disabled = false;
             hideOverlay();
@@ -1150,77 +1172,85 @@
     });
 
     // 翻訳プレビューボタンイベント設定
-    document.getElementById('translatePromptBtn').addEventListener('click', async () => {
-        const input = document.getElementById('prompt');
-        const notice = document.getElementById('promptTransNotice');
-        const btn = document.getElementById('translatePromptBtn');
-        const text = input.value.trim();
+    translatePromptBtn?.addEventListener('click', async () => {
+        const input = promptInput;
+        const notice = promptTransNotice;
+        const btn = translatePromptBtn;
+        const text = input?.value.trim() || '';
         if (!text) return;
         
         btn.disabled = true;
         try {
             const translated = await translateText(text);
-            notice.style.display = 'block';
-            notice.style.background = '#f0fdf4';
-            notice.style.border = '1px solid #bbf7d0';
-            notice.style.color = '#166534';
-            notice.innerHTML = await jhtml.render('tpl-trans-notice', {
-                title: '英訳プレビュー',
-                closeBtnId: 'closePromptTransBtn',
-                applyBtnId: 'applyTransPromptBtn',
-                applyLabel: 'プロンプト欄に適用',
-                translated
-            });
+            if (notice) {
+                jhtml.show(notice);
+                notice.style.background = '#f0fdf4';
+                notice.style.border = '1px solid #bbf7d0';
+                notice.style.color = '#166534';
+                notice.innerHTML = await jhtml.render('tpl-trans-notice', {
+                    title: '英訳プレビュー',
+                    closeBtnId: 'closePromptTransBtn',
+                    applyBtnId: 'applyTransPromptBtn',
+                    applyLabel: 'プロンプト欄に適用',
+                    translated
+                });
 
-            document.getElementById('closePromptTransBtn')?.addEventListener('click', () => {
-                notice.style.display = 'none';
-            });
+                jhtml.$('closePromptTransBtn')?.addEventListener('click', () => {
+                    jhtml.hide(notice);
+                });
 
-            document.getElementById('applyTransPromptBtn')?.addEventListener('click', () => {
-                input.value = translated;
-                notice.style.display = 'none';
-            });
+                jhtml.$('applyTransPromptBtn')?.addEventListener('click', () => {
+                    if (input) input.value = translated;
+                    jhtml.hide(notice);
+                });
+            }
         } catch (e) {
-            notice.style.display = 'block';
-            notice.textContent = '翻訳に失敗しました';
+            if (notice) {
+                jhtml.show(notice);
+                notice.textContent = '翻訳に失敗しました';
+            }
         } finally {
             btn.disabled = false;
         }
     });
 
-    document.getElementById('translateNegBtn').addEventListener('click', async () => {
-        const input = document.getElementById('negativePrompt');
-        const notice = document.getElementById('negTransNotice');
-        const btn = document.getElementById('translateNegBtn');
-        const text = input.value.trim();
+    translateNegBtn?.addEventListener('click', async () => {
+        const input = negativePromptInput;
+        const notice = negTransNotice;
+        const btn = translateNegBtn;
+        const text = input?.value.trim() || '';
         if (!text) return;
 
         btn.disabled = true;
         try {
             const translated = await translateText(text);
-            notice.style.display = 'block';
-            notice.style.background = '#f0fdf4';
-            notice.style.border = '1px solid #bbf7d0';
-            notice.style.color = '#166534';
-            notice.innerHTML = await jhtml.render('tpl-trans-notice', {
-                title: 'ネガティブ英訳プレビュー',
-                closeBtnId: 'closeNegTransBtn',
-                applyBtnId: 'applyTransNegBtn',
-                applyLabel: 'ネガティブ欄に適用',
-                translated
-            });
+            if (notice) {
+                jhtml.show(notice);
+                notice.style.background = '#f0fdf4';
+                notice.style.border = '1px solid #bbf7d0';
+                notice.style.color = '#166534';
+                notice.innerHTML = await jhtml.render('tpl-trans-notice', {
+                    title: 'ネガティブ英訳プレビュー',
+                    closeBtnId: 'closeNegTransBtn',
+                    applyBtnId: 'applyTransNegBtn',
+                    applyLabel: 'ネガティブ欄に適用',
+                    translated
+                });
 
-            document.getElementById('closeNegTransBtn')?.addEventListener('click', () => {
-                notice.style.display = 'none';
-            });
+                jhtml.$('closeNegTransBtn')?.addEventListener('click', () => {
+                    jhtml.hide(notice);
+                });
 
-            document.getElementById('applyTransNegBtn')?.addEventListener('click', () => {
-                input.value = translated;
-                notice.style.display = 'none';
-            });
+                jhtml.$('applyTransNegBtn')?.addEventListener('click', () => {
+                    if (input) input.value = translated;
+                    jhtml.hide(notice);
+                });
+            }
         } catch (e) {
-            notice.style.display = 'block';
-            notice.textContent = '翻訳に失敗しました';
+            if (notice) {
+                jhtml.show(notice);
+                notice.textContent = '翻訳に失敗しました';
+            }
         } finally {
             btn.disabled = false;
         }
@@ -1228,7 +1258,7 @@
 
     // 幅・高さの入力値に合わせてセレクトボックスの選択状態を同期
     function syncResolutionPreset(w, h) {
-        const resSelect = document.getElementById('resolutionPreset');
+        if (!resSelect) return;
         const targetVal = `${w}x${h}`;
         if (resSelect.querySelector(`option[value="${targetVal}"]`)) {
             resSelect.value = targetVal;
@@ -1255,14 +1285,9 @@
             serverDefaults = defs;
 
             // SDサーバー一覧の生成
-            const sdServerGroup = document.getElementById('sdServerGroup');
-            const sdServerSelect = document.getElementById('sdServerSelect');
-            const sdServerEndpointBadge = document.getElementById('sdServerEndpointBadge');
-            const sdServerDesc = document.getElementById('sdServerDesc');
-
             currentServers = data.servers || [];
 
-            if (currentServers.length > 0) {
+            if (currentServers.length > 0 && sdServerSelect) {
                 const typeLabels = {
                     'sd15': '🏷️ SD 1.5系',
                     'sdxl': '⚡ SDXL系',
@@ -1286,7 +1311,7 @@
                     if (sel) {
                         const srvId = sel.value;
                         const srv = currentServers.find(s => s.id === srvId);
-                        sdServerEndpointBadge.textContent = sel.dataset.url || '';
+                        if (sdServerEndpointBadge) sdServerEndpointBadge.textContent = sel.dataset.url || '';
                         
                         let desc = '';
                         if (sel.dataset.typeLabel) {
@@ -1304,7 +1329,7 @@
                             if (d.sampler_name) dList.push(`${d.sampler_name}`);
                             desc += (desc ? ' | ' : '') + `📐 固有defaults: ${dList.join(', ')}`;
                         }
-                        sdServerDesc.textContent = desc;
+                        if (sdServerDesc) sdServerDesc.textContent = desc;
                         localStorage.setItem('sd_server_id', sel.value);
 
                         if (autoApplyDefaults && srv) {
@@ -1323,47 +1348,44 @@
                 }
                 updateServerDetails(false);
 
-                if (currentServers.length > 1) {
-                    sdServerGroup.style.display = 'block';
+                if (currentServers.length > 1 && sdServerGroup) {
+                    jhtml.show(sdServerGroup);
                 }
             }
 
             // 解像度プリセット生成
-            if (opts.resolutions && Array.isArray(opts.resolutions)) {
-                const resSelect = document.getElementById('resolutionPreset');
+            if (opts.resolutions && Array.isArray(opts.resolutions) && resSelect) {
                 resSelect.innerHTML = await jhtml.render('tpl-resolution-options', { resolutions: opts.resolutions });
 
                 resSelect.addEventListener('change', (e) => {
                     if (e.target.value === 'custom') return;
                     const parts = e.target.value.split('x').map(Number);
                     if (parts.length === 2 && parts[0] && parts[1]) {
-                        document.getElementById('width').value = parts[0];
-                        document.getElementById('height').value = parts[1];
+                        if (widthInput) widthInput.value = parts[0];
+                        if (heightInput) heightInput.value = parts[1];
                     }
                 });
             }
 
             // サンプラー生成
-            if (opts.samplers && Array.isArray(opts.samplers)) {
-                const samplerSelect = document.getElementById('sampler');
+            if (opts.samplers && Array.isArray(opts.samplers) && samplerSelect) {
                 samplerSelect.innerHTML = await jhtml.render('tpl-sampler-options', { samplers: opts.samplers });
                 if (defs.sampler_name) {
                     samplerSelect.value = defs.sampler_name;
                 }
             }
 
-            if (opts.stepsRange) {
-                if (opts.stepsRange.min !== undefined) document.getElementById('steps').min = opts.stepsRange.min;
-                if (opts.stepsRange.max !== undefined) document.getElementById('steps').max = opts.stepsRange.max;
+            if (opts.stepsRange && stepsInput) {
+                if (opts.stepsRange.min !== undefined) stepsInput.min = opts.stepsRange.min;
+                if (opts.stepsRange.max !== undefined) stepsInput.max = opts.stepsRange.max;
             }
-            if (opts.cfgScaleRange) {
-                if (opts.cfgScaleRange.min !== undefined) document.getElementById('cfgScale').min = opts.cfgScaleRange.min;
-                if (opts.cfgScaleRange.max !== undefined) document.getElementById('cfgScale').max = opts.cfgScaleRange.max;
-                if (opts.cfgScaleRange.step !== undefined) document.getElementById('cfgScale').step = opts.cfgScaleRange.step;
+            if (opts.cfgScaleRange && cfgScaleInput) {
+                if (opts.cfgScaleRange.min !== undefined) cfgScaleInput.min = opts.cfgScaleRange.min;
+                if (opts.cfgScaleRange.max !== undefined) cfgScaleInput.max = opts.cfgScaleRange.max;
+                if (opts.cfgScaleRange.step !== undefined) cfgScaleInput.step = opts.cfgScaleRange.step;
             }
 
             // テーマ選択肢の生成
-            const themeSelect = document.getElementById('themeSelect');
             if (opts.themes && Array.isArray(opts.themes)) {
                 availableThemes = opts.themes;
             } else {
@@ -1400,7 +1422,7 @@
     }
 
     // 「🔄 既定値に戻す」ボタン
-    document.getElementById('resetBtn').addEventListener('click', () => {
+    jhtml.$('resetBtn')?.addEventListener('click', () => {
         if (!confirm('すべての入力パラメータを初期の既定値に戻しますか？')) return;
         applyDefaultParams(true);
     });
@@ -1412,10 +1434,9 @@
         await loadConfig();
 
         if (currentEditId) {
-            const modeBadge = document.getElementById('pageModeBadge');
-            if (modeBadge) modeBadge.textContent = `画像編集 (元画像 #${currentEditId})`;
-            document.getElementById('editAlert').style.display = 'block';
-            document.getElementById('parentId').value = currentEditId;
+            if (pageModeBadge) pageModeBadge.textContent = `画像編集 (元画像 #${currentEditId})`;
+            if (editAlert) jhtml.show(editAlert);
+            if (parentIdInput) parentIdInput.value = currentEditId;
 
             try {
                 const json = await jhtml.api.get(`/api/image?id=${currentEditId}`);
@@ -1424,16 +1445,20 @@
                     applyParams(item);
 
                     if (item.image_path) {
-                        const img = document.getElementById('resultImage');
-                        img.src = item.image_path;
-                        img.style.display = 'block';
-                        document.getElementById('emptyPreview').style.display = 'none';
-                        document.getElementById('downloadBtn').href = item.image_path;
-                        document.getElementById('resultActions').style.display = 'flex';
+                        if (resultImage) {
+                            resultImage.src = item.image_path;
+                            jhtml.show(resultImage);
+                        }
+                        if (emptyPreview) jhtml.hide(emptyPreview);
+                        if (downloadBtn) downloadBtn.href = item.image_path;
+                        if (resultActions) {
+                            jhtml.show(resultActions);
+                            resultActions.style.display = 'flex';
+                        }
                     }
 
                     // 利用サーバー情報の復元
-                    const srvSelect = document.getElementById('sdServerSelect');
+                    const srvSelect = sdServerSelect;
                     const targetServerId = item.server_id || (currentServers[0] ? currentServers[0].id : '');
                     if (srvSelect) {
                         if (Array.from(srvSelect.options).some(o => o.value === targetServerId)) {
@@ -1441,47 +1466,40 @@
                         } else if (currentServers[0]) {
                             srvSelect.value = currentServers[0].id;
                         }
-                        const badge = document.getElementById('sdServerEndpointBadge');
-                        const desc = document.getElementById('sdServerDesc');
                         const sel = srvSelect.options[srvSelect.selectedIndex];
-                        if (badge && sel) badge.textContent = sel.dataset.url || '';
-                        if (desc && sel) desc.textContent = sel.dataset.desc || '';
+                        if (sdServerEndpointBadge && sel) sdServerEndpointBadge.textContent = sel.dataset.url || '';
+                        if (sdServerDesc && sel) sdServerDesc.textContent = sel.dataset.desc || '';
                     }
 
                     // 右ペインメタ情報欄の表示
-                    const usedServerRow = document.getElementById('usedServerRow');
-                    const usedServerLabel = document.getElementById('usedServerLabel');
                     const foundServer = currentServers.find(s => s.id === targetServerId);
                     const displayServerName = item.server_name || foundServer?.name || targetServerId || 'デフォルト SD サーバー';
                     if (usedServerRow && usedServerLabel) {
                         usedServerLabel.textContent = displayServerName;
-                        usedServerRow.style.display = 'block';
+                        jhtml.show(usedServerRow);
                     }
 
-                    const usedThemeRow = document.getElementById('usedThemeRow');
-                    const usedThemeLabel = document.getElementById('usedThemeLabel');
                     if (usedThemeRow && usedThemeLabel) {
                         if (item.theme && item.theme !== 'none') {
                             const th = availableThemes.find(t => t.id === item.theme);
                             usedThemeLabel.textContent = th ? `${th.icon ? th.icon + ' ' : ''}${th.name}` : item.theme;
-                            usedThemeRow.style.display = 'block';
+                            jhtml.show(usedThemeRow);
                         } else {
-                            usedThemeRow.style.display = 'none';
+                            jhtml.hide(usedThemeRow);
                         }
                     }
 
-                    if (item.seed !== undefined) {
-                        document.getElementById('usedSeedLabel').textContent = item.seed;
+                    if (item.seed !== undefined && usedSeedLabel) {
+                        usedSeedLabel.textContent = item.seed;
                     }
-                    if (item.generation_time_ms) {
-                        document.getElementById('spentTimeLabel').textContent = `${(item.generation_time_ms / 1000).toFixed(2)} 秒`;
+                    if (item.generation_time_ms && spentTimeLabel) {
+                        spentTimeLabel.textContent = `${(item.generation_time_ms / 1000).toFixed(2)} 秒`;
                     }
-                    document.getElementById('resultMeta').style.display = 'block';
+                    if (resultMeta) jhtml.show(resultMeta);
 
-                    if (item.translated_prompt) {
-                        const notice = document.getElementById('promptTransNotice');
-                        notice.style.display = 'block';
-                        notice.innerHTML = jhtml.html`<strong>英訳:</strong> ${item.translated_prompt}`;
+                    if (item.translated_prompt && promptTransNotice) {
+                        jhtml.show(promptTransNotice);
+                        promptTransNotice.innerHTML = jhtml.html`<strong>英訳:</strong> ${item.translated_prompt}`;
                     }
                 }
             } catch (e) {
@@ -1491,7 +1509,7 @@
     }
 
     // 手動キャンセルボタン
-    document.getElementById('cancelBtn').addEventListener('click', async () => {
+    cancelBtn?.addEventListener('click', async () => {
         if (typeof pollInterval === 'function') {
             pollInterval();
         } else if (pollInterval) {
@@ -1518,14 +1536,15 @@
             currentAbortController = null;
         }
 
-        document.getElementById('loadingIndicator').style.display = 'none';
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('cancelBtn').style.display = 'none';
+        if (loadingIndicator) jhtml.hide(loadingIndicator);
+        if (submitBtn) submitBtn.disabled = false;
+        if (cancelBtn) jhtml.hide(cancelBtn);
         
-        const errorBox = document.getElementById('errorBox');
-        errorBox.textContent = '🛑 画像生成をキャンセルしました';
-        errorBox.style.display = 'block';
-        document.getElementById('emptyPreview').style.display = 'block';
+        if (errorBox) {
+            errorBox.textContent = '🛑 画像生成をキャンセルしました';
+            jhtml.show(errorBox);
+        }
+        if (emptyPreview) jhtml.show(emptyPreview);
     });
 
     // 画面遷移・離脱時の確認ダイアログ
@@ -1598,9 +1617,9 @@
         if (!lastGeneratedData || !lastGeneratedData.base64Data) return;
 
         const meta = lastGeneratedData.meta || {};
-        const currentServerId = document.getElementById('sdServerSelect')?.value || '';
+        const currentServerId = sdServerSelect?.value || '';
         const currentServer = currentServers.find(s => s.id === currentServerId);
-        const currentTheme = meta.theme !== undefined ? meta.theme : (document.getElementById('themeSelect')?.value || '');
+        const currentTheme = meta.theme !== undefined ? meta.theme : (themeSelect?.value || '');
 
         const payload = {
             id: currentEditId ? parseInt(currentEditId, 10) : null,
@@ -1622,9 +1641,8 @@
             generation_time_ms: meta.generation_time_ms
         };
 
-        const statusBar = document.getElementById('saveStatusBar');
-        const statusText = document.getElementById('saveStatusText');
-        const manualSaveBtn = document.getElementById('manualSaveBtn');
+        const statusBar = saveStatusBar;
+        const statusText = saveStatusText;
 
         try {
             const json = await jhtml.api.post('/api/save', payload);
@@ -1643,17 +1661,19 @@
                 window.history.replaceState(null, '', newUrl.toString());
 
                 // UIのバッジやアラートを編集モード状態へ更新
-                const modeBadge = document.getElementById('pageModeBadge');
-                if (modeBadge) modeBadge.textContent = `画像編集 (元画像 #${savedId})`;
-                document.getElementById('editAlert').style.display = 'block';
-                document.getElementById('parentId').value = savedId;
+                if (pageModeBadge) pageModeBadge.textContent = `画像編集 (元画像 #${savedId})`;
+                if (editAlert) jhtml.show(editAlert);
+                if (parentIdInput) parentIdInput.value = savedId;
                 
                 if (statusBar) statusBar.className = 'save-status-bar status-saved';
                 if (statusText) statusText.textContent = wasEdit ? '✅ 元画像の上書き保存が完了しました' : '✅ ギャラリーへ新規保存が完了しました';
-                if (manualSaveBtn) manualSaveBtn.style.display = 'none';
-                if (statusBar) statusBar.style.display = 'flex';
+                if (manualSaveBtn) jhtml.hide(manualSaveBtn);
+                if (statusBar) {
+                    jhtml.show(statusBar);
+                    statusBar.style.display = 'flex';
+                }
                 
-                document.getElementById('downloadBtn').href = json.data.image_path;
+                if (downloadBtn) downloadBtn.href = json.data.image_path;
                 showToast(wasEdit ? '元画像を上書き保存しました' : '画像をギャラリーに保存しました', 'success');
             } else {
                 showToast('保存に失敗しました: ' + (json.error || '不明なエラー'), 'error');
@@ -1664,72 +1684,61 @@
     }
 
     // 手動「💾 この画像を保存」ボタン
-    document.getElementById('manualSaveBtn')?.addEventListener('click', async () => {
+    manualSaveBtn?.addEventListener('click', async () => {
         await saveImageToServer();
     });
 
     // フォーム送信（画像生成実行）
-    document.getElementById('generateForm').addEventListener('submit', async (e) => {
+    jhtml.$('#generateForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const prompt = document.getElementById('prompt').value.trim();
+        const prompt = promptInput?.value.trim() || '';
         if (!prompt) {
             showToast('プロンプトを入力してください', 'warning');
             return;
         }
 
-        const submitBtn = document.getElementById('submitBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const errorBox = document.getElementById('errorBox');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const emptyPreview = document.getElementById('emptyPreview');
-        const resultImage = document.getElementById('resultImage');
-        const resultActions = document.getElementById('resultActions');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const resultMeta = document.getElementById('resultMeta');
-        const spentTimeLabel = document.getElementById('spentTimeLabel');
-        const usedSeedLabel = document.getElementById('usedSeedLabel');
-        const translatedPromptRow = document.getElementById('translatedPromptRow');
-        const translatedPromptLabel = document.getElementById('translatedPromptLabel');
-        const elapsedTimer = document.getElementById('elapsedTimer');
-        const saveStatusBar = document.getElementById('saveStatusBar');
-
-        errorBox.style.display = 'none';
-        errorBox.textContent = '';
-        resultMeta.style.display = 'none';
-        translatedPromptRow.style.display = 'none';
-        saveStatusBar.style.display = 'none';
-        submitBtn.disabled = true;
-        cancelBtn.style.display = 'inline-flex';
-        emptyPreview.style.display = 'none';
-        resultImage.style.display = 'none';
-        resultActions.style.display = 'none';
-        loadingIndicator.style.display = 'block';
+        if (errorBox) {
+            jhtml.hide(errorBox);
+            errorBox.textContent = '';
+        }
+        if (resultMeta) jhtml.hide(resultMeta);
+        if (translatedPromptRow) jhtml.hide(translatedPromptRow);
+        if (saveStatusBar) jhtml.hide(saveStatusBar);
+        if (submitBtn) submitBtn.disabled = true;
+        if (cancelBtn) {
+            jhtml.show(cancelBtn);
+            cancelBtn.style.display = 'inline-flex';
+        }
+        if (emptyPreview) jhtml.hide(emptyPreview);
+        if (resultImage) jhtml.hide(resultImage);
+        if (resultActions) jhtml.hide(resultActions);
+        if (loadingIndicator) jhtml.show(loadingIndicator);
 
         const startTimestamp = Date.now();
-        elapsedTimer.textContent = '0.0s';
+        if (elapsedTimer) elapsedTimer.textContent = '0.0s';
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             const elapsed = ((Date.now() - startTimestamp) / 1000).toFixed(1);
-            elapsedTimer.textContent = `${elapsed}s`;
+            if (elapsedTimer) elapsedTimer.textContent = `${elapsed}s`;
         }, 100);
 
-        const isAssist = document.getElementById('promptAssistCheck')?.checked ?? true;
-        const selectedTheme = document.getElementById('themeSelect')?.value || '';
+        const isAssist = promptAssistCheck?.checked ?? true;
+        const selectedTheme = themeSelect?.value || '';
         const payload = {
-            serverId: document.getElementById('sdServerSelect')?.value || null,
+            serverId: sdServerSelect?.value || null,
             prompt: prompt,
-            negative_prompt: document.getElementById('negativePrompt').value.trim(),
+            negative_prompt: negativePromptInput?.value.trim() || '',
             promptMode: isAssist ? 'assist' : 'direct',
             promptAssist: isAssist,
             theme: selectedTheme,
-            width: parseInt(document.getElementById('width').value, 10),
-            height: parseInt(document.getElementById('height').value, 10),
-            steps: parseInt(document.getElementById('steps').value, 10),
-            cfg_scale: parseFloat(document.getElementById('cfgScale').value),
-            seed: parseInt(document.getElementById('seed').value, 10),
-            sampler_name: document.getElementById('sampler').value,
-            parent_id: document.getElementById('parentId').value ? parseInt(document.getElementById('parentId').value, 10) : null,
+            width: parseInt(widthInput?.value || 512, 10),
+            height: parseInt(heightInput?.value || 512, 10),
+            steps: parseInt(stepsInput?.value || 20, 10),
+            cfg_scale: parseFloat(cfgScaleInput?.value || 7.0),
+            seed: parseInt(seedInput?.value || -1, 10),
+            sampler_name: samplerSelect?.value || 'euler_a',
+            parent_id: parentIdInput?.value ? parseInt(parentIdInput.value, 10) : null,
             autoSave: false
         };
 
@@ -1739,16 +1748,18 @@
 
             if (!initData.success) {
                 clearInterval(timerInterval);
-                loadingIndicator.style.display = 'none';
-                submitBtn.disabled = false;
-                cancelBtn.style.display = 'none';
+                if (loadingIndicator) jhtml.hide(loadingIndicator);
+                if (submitBtn) submitBtn.disabled = false;
+                if (cancelBtn) jhtml.hide(cancelBtn);
                 let msg = initData.error || '画像生成の開始に失敗しました';
                 if (initData.errors && Array.isArray(initData.errors)) {
                     msg = initData.errors.map(err => err.message).join('\n');
                 }
-                errorBox.textContent = msg;
-                errorBox.style.display = 'block';
-                emptyPreview.style.display = 'block';
+                if (errorBox) {
+                    errorBox.textContent = msg;
+                    jhtml.show(errorBox);
+                }
+                if (emptyPreview) jhtml.show(emptyPreview);
                 return;
             }
 
@@ -1770,17 +1781,19 @@
                     pollInterval = null;
                     clearInterval(timerInterval);
                     timerInterval = null;
-                    loadingIndicator.style.display = 'none';
-                    submitBtn.disabled = false;
-                    cancelBtn.style.display = 'none';
+                    if (loadingIndicator) jhtml.hide(loadingIndicator);
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (cancelBtn) jhtml.hide(cancelBtn);
                     currentTaskId = null;
 
                     if (!data.success || data.status === 'failed') {
                         let msg = data.error || '画像生成に失敗しました';
                         const spentSec = ((Date.now() - startTimestamp) / 1000).toFixed(2);
-                        errorBox.textContent = `${msg} (エラーまでの経過時間: ${spentSec}秒)`;
-                        errorBox.style.display = 'block';
-                        emptyPreview.style.display = 'block';
+                        if (errorBox) {
+                            errorBox.textContent = `${msg} (エラーまでの経過時間: ${spentSec}秒)`;
+                            jhtml.show(errorBox);
+                        }
+                        if (emptyPreview) jhtml.show(emptyPreview);
                         return true;
                     }
 
@@ -1791,42 +1804,43 @@
                     };
 
                     const finalSec = data.durationSec || ((Date.now() - startTimestamp) / 1000).toFixed(2);
-                    spentTimeLabel.textContent = `${finalSec} 秒`;
-                    usedSeedLabel.textContent = data.seed !== undefined ? data.seed : '-';
+                    if (spentTimeLabel) spentTimeLabel.textContent = `${finalSec} 秒`;
+                    if (usedSeedLabel) usedSeedLabel.textContent = data.seed !== undefined ? data.seed : '-';
 
-                    const usedServerRow = document.getElementById('usedServerRow');
-                    const usedServerLabel = document.getElementById('usedServerLabel');
                     if (data.serverInfo && usedServerRow && usedServerLabel) {
                         usedServerLabel.textContent = data.serverInfo.name || data.serverInfo.id;
-                        usedServerRow.style.display = 'block';
+                        jhtml.show(usedServerRow);
                     } else if (usedServerRow) {
-                        usedServerRow.style.display = 'none';
+                        jhtml.hide(usedServerRow);
                     }
 
-                    const usedThemeRow = document.getElementById('usedThemeRow');
-                    const usedThemeLabel = document.getElementById('usedThemeLabel');
                     const effectiveTheme = data.theme || selectedTheme;
                     if (usedThemeRow && usedThemeLabel) {
                         if (effectiveTheme && effectiveTheme !== 'none') {
                             const th = availableThemes.find(t => t.id === effectiveTheme);
                             usedThemeLabel.textContent = th ? `${th.icon ? th.icon + ' ' : ''}${th.name}` : effectiveTheme;
-                            usedThemeRow.style.display = 'block';
+                            jhtml.show(usedThemeRow);
                         } else {
-                            usedThemeRow.style.display = 'none';
+                            jhtml.hide(usedThemeRow);
                         }
                     }
                     
                     const trans = data.translated && data.translated.prompt;
-                    if (trans) {
+                    if (trans && translatedPromptLabel && translatedPromptRow) {
                         translatedPromptLabel.textContent = trans;
-                        translatedPromptRow.style.display = 'block';
+                        jhtml.show(translatedPromptRow);
                     }
 
-                    resultImage.src = data.image_path;
-                    resultImage.style.display = 'block';
-                    downloadBtn.href = data.image_path;
-                    resultActions.style.display = 'flex';
-                    resultMeta.style.display = 'block';
+                    if (resultImage) {
+                        resultImage.src = data.image_path;
+                        jhtml.show(resultImage);
+                    }
+                    if (downloadBtn) downloadBtn.href = data.image_path;
+                    if (resultActions) {
+                        jhtml.show(resultActions);
+                        resultActions.style.display = 'flex';
+                    }
+                    if (resultMeta) jhtml.show(resultMeta);
 
                     // 保存確認ダイアログの表示
                     showSaveModal(data.image_path);
@@ -1840,12 +1854,14 @@
         } catch (e) {
             clearInterval(timerInterval);
             if (pollInterval) clearInterval(pollInterval);
-            loadingIndicator.style.display = 'none';
-            submitBtn.disabled = false;
-            cancelBtn.style.display = 'none';
-            errorBox.textContent = `通信エラー: ${e.message}`;
-            errorBox.style.display = 'block';
-            emptyPreview.style.display = 'block';
+            if (loadingIndicator) jhtml.hide(loadingIndicator);
+            if (submitBtn) submitBtn.disabled = false;
+            if (cancelBtn) jhtml.hide(cancelBtn);
+            if (errorBox) {
+                errorBox.textContent = `通信エラー: ${e.message}`;
+                jhtml.show(errorBox);
+            }
+            if (emptyPreview) jhtml.show(emptyPreview);
         }
     });
 
