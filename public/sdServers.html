@@ -721,7 +721,7 @@
         'addServerBtn', 'modalCloseBtn', 'modalCancelBtn', 'modalTestBtn'
     );
 
-    endpointSelect.addEventListener('change', (e) => {
+    jhtml.on('#serverEndpointSelect', 'change', (e) => {
         if (e.target.value === 'custom') {
             jhtml.show(endpointCustom);
             endpointCustom.required = true;
@@ -731,7 +731,7 @@
         }
     });
 
-    addServerBtn?.addEventListener('click', () => {
+    jhtml.on('#addServerBtn', 'click', () => {
         modalTitle.textContent = '新しい SD サーバーを追加';
         formIsEdit.value = '0';
         serverIdInput.readOnly = false;
@@ -813,7 +813,7 @@
     });
 
     // モーダル内テスト接続
-    modalTestBtn?.addEventListener('click', async () => {
+    jhtml.on('#modalTestBtn', 'click', async () => {
         const baseUrl = serverBaseUrlInput?.value.trim() || '';
         let endpoint = endpointSelect.value;
         if (endpoint === 'custom') {
@@ -849,7 +849,7 @@
     });
 
     // サーバー保存送信
-    form.addEventListener('submit', async (e) => {
+    jhtml.on('#serverForm', 'submit', async (e) => {
         e.preventDefault();
         const fData = jhtml.form('#serverForm');
         const id = (fData.serverId || '').trim();
@@ -897,7 +897,7 @@
     });
 
     // 共通既定パラメータ保存送信
-    jhtml.$('#defaultsForm')?.addEventListener('submit', async (e) => {
+    jhtml.on('#defaultsForm', 'submit', async (e) => {
         e.preventDefault();
         const formData = jhtml.form('#defaultsForm');
         const payload = {

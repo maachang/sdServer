@@ -624,7 +624,7 @@
         } catch (e) { hideLoading(); showAlert(`通信エラー: ${e.message}`, true); }
     }
 
-    activateLocalBtn?.addEventListener('click', async () => {
+    jhtml.on('#activateLocalBtn', 'click', async () => {
         try {
             const json = await jhtml.api.post('/api/models?action=switchProvider', { provider: 'local' });
             if (json.success) { showAlert('ローカルLLM (Transformers.js) を有効化しました！'); loadModels(); }
@@ -633,7 +633,7 @@
     });
 
     // 外部LLM: モデル一覧取得
-    extFetchModelsBtn?.addEventListener('click', async () => {
+    jhtml.on('#extFetchModelsBtn', 'click', async () => {
         const endpoint = extEndpoint?.value.trim() || '';
         const apiKey = extApiKey?.value.trim() || '';
         const fetchBtn = extFetchModelsBtn;
@@ -689,7 +689,7 @@
         }
     });
 
-    extModelSelect?.addEventListener('change', (e) => {
+    jhtml.on('#extModelSelect', 'change', (e) => {
         if (!extModel) return;
         if (e.target.value === '__custom__') {
             jhtml.show(extModel);
@@ -702,7 +702,7 @@
     });
 
     // 外部LLM: 接続テスト
-    extTestBtn?.addEventListener('click', async () => {
+    jhtml.on('#extTestBtn', 'click', async () => {
         const endpoint = extEndpoint?.value.trim() || '';
         const model = extModel?.value.trim() || '';
         const apiKey = extApiKey?.value.trim() || '';
@@ -747,11 +747,11 @@
             loadModels();
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     }
-    extSaveAndEnableBtn?.addEventListener('click', () => saveExternalSettings(true));
-    extSaveOnlyBtn?.addEventListener('click', () => saveExternalSettings(false));
+    jhtml.on('#extSaveAndEnableBtn', 'click', () => saveExternalSettings(true));
+    jhtml.on('#extSaveOnlyBtn', 'click', () => saveExternalSettings(false));
 
     // OpenAI: モデル一覧取得
-    oaiFetchModelsBtn?.addEventListener('click', async () => {
+    jhtml.on('#oaiFetchModelsBtn', 'click', async () => {
         const apiKey = oaiApiKey?.value.trim() || '';
         const fetchBtn = oaiFetchModelsBtn;
         const selectEl = oaiModelSelect;
@@ -771,21 +771,34 @@
                 const models = json.data.models;
                 const currentVal = selectEl?.value;
                 if (selectEl) {
+                    // GPTモデルを優先的に上位にソート
+                    models.sort((a, b) => {
+                        const isGptA = a.startsWith('gpt-') || a.startsWith('o1') || a.startsWith('o3');
+                        const isGptB = b.startsWith('gpt-') || b.startsWith('o1') || b.startsWith('o3');
+                        if (isGptA && !isGptB) return -1;
+                        if (!isGptA && isGptB) return 1;
+                        return a.localeCompare(b);
+                    });
+
                     selectEl.innerHTML = jhtml.html`
                         ${models.map(m => jhtml.html`<option value="${m}">${m}</option>`)}
-                        <option value="custom">✏️ その他 (カスタムモデル指定)</option>
+                        <option value="custom">✏️ 手動で自由入力...</option>
                     `;
 
+                    // デフォルトまたは現在の入力値があれば選択
+                    const currentVal = oaiCustomModel?.value.trim();
                     if (models.includes(currentVal)) {
                         selectEl.value = currentVal;
+                        jhtml.hide(oaiCustomModel);
                     } else if (models.includes('gpt-4o-mini')) {
                         selectEl.value = 'gpt-4o-mini';
+                        jhtml.hide(oaiCustomModel);
                     }
                 }
 
                 showAlert(`OpenAI から ${models.length} 件のモデルを取得しました`);
             } else {
-                showAlert(`モデル一覧取得失敗: ${json.error}`, true);
+                showAlert(`モデル一覧取得失敗: ${json.error || 'モデルが見つかりません'}`, true);
             }
         } catch (e) {
             showAlert(`通信エラー: ${e.message}`, true);
@@ -795,7 +808,7 @@
         }
     });
 
-    oaiModelSelect?.addEventListener('change', (e) => {
+    jhtml.on('#oaiModelSelect', 'change', (e) => {
         if (!oaiCustomModel) return;
         if (e.target.value === 'custom') {
             jhtml.show(oaiCustomModel);
@@ -805,7 +818,7 @@
         }
     });
 
-    oaiTestBtn?.addEventListener('click', async () => {
+    jhtml.on('#oaiTestBtn', 'click', async () => {
         const apiKey = oaiApiKey?.value.trim() || '';
         const mSelect = oaiModelSelect?.value;
         const model = (mSelect === 'custom') ? oaiCustomModel?.value.trim() : mSelect;
@@ -850,8 +863,8 @@
             loadModels();
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     }
-    oaiSaveAndEnableBtn?.addEventListener('click', () => saveOpenAISettings(true));
-    oaiSaveOnlyBtn?.addEventListener('click', () => saveOpenAISettings(false));
+    jhtml.on('#oaiSaveAndEnableBtn', 'click', () => saveOpenAISettings(true));
+    jhtml.on('#oaiSaveOnlyBtn', 'click', () => saveOpenAISettings(false));
 
     function deleteCacheOnly(modelId, cacheSize) {
         openDeleteModal({
@@ -913,7 +926,7 @@
         } catch (e) { showAlert(`通信エラー: ${e.message}`, true); }
     }
 
-    addModelForm?.addEventListener('submit', async (e) => {
+    jhtml.on('#addModelForm', 'submit', async (e) => {
         e.preventDefault();
         const fData = jhtml.form('#addModelForm');
         const modelId = (fData.modelId || '').trim();
@@ -957,7 +970,7 @@
         if (mid) deleteOrphanCache(mid, size);
     });
 
-    globalRefreshBtn?.addEventListener('click', loadModels);
+    jhtml.on('#globalRefreshBtn', 'click', loadModels);
 
     loadModels();
 </script>

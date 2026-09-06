@@ -956,7 +956,7 @@
     window.showThemeInfoModal = showThemeInfoModal;
     window.hideThemeInfoModal = hideThemeInfoModal;
 
-    if (themeInfoBtn) themeInfoBtn.addEventListener('click', showThemeInfoModal);
+    jhtml.on('#themeInfoBtn', 'click', showThemeInfoModal);
 
     // モーダル内のイベント委譲（閉じるボタン・テーマ切り替えピル）
     jhtml.on('#themeInfoModal', 'click', async (e) => {
@@ -1075,7 +1075,7 @@
     let lastOriginalPrompt = '';
     let lastOriginalNeg = '';
 
-    assistPromptBtn?.addEventListener('click', async () => {
+    jhtml.on('#assistPromptBtn', 'click', async () => {
         const promptEl = promptInput;
         const negEl = negativePromptInput;
         const notice = promptTransNotice;
@@ -1271,6 +1271,7 @@
     }
 
     // 設定ロード
+    let updateServerDetails = null;
     async function loadConfig() {
         try {
             const data = await jhtml.api.get('/api/config');
@@ -1302,7 +1303,7 @@
                 });
                 await jhtml.renderTo(sdServerSelect, 'tpl-server-options', { servers: serverList });
 
-                const updateServerDetails = (autoApplyDefaults = false) => {
+                updateServerDetails = (autoApplyDefaults = false) => {
                     const sel = sdServerSelect.options[sdServerSelect.selectedIndex];
                     if (sel) {
                         const srvId = sel.value;
@@ -1334,8 +1335,6 @@
                     }
                 };
 
-                sdServerSelect.addEventListener('change', () => updateServerDetails(true));
-
                 const savedServerId = jhtml.storage.get('sd_server_id', data.activeServer || currentServers[0].id);
                 if (currentServers.some(s => s.id === savedServerId)) {
                     sdServerSelect.value = savedServerId;
@@ -1352,15 +1351,6 @@
             // 解像度プリセット生成
             if (opts.resolutions && Array.isArray(opts.resolutions) && resSelect) {
                 await jhtml.renderTo(resSelect, 'tpl-resolution-options', { resolutions: opts.resolutions });
-
-                resSelect.addEventListener('change', (e) => {
-                    if (e.target.value === 'custom') return;
-                    const parts = e.target.value.split('x').map(Number);
-                    if (parts.length === 2 && parts[0] && parts[1]) {
-                        if (widthInput) widthInput.value = parts[0];
-                        if (heightInput) heightInput.value = parts[1];
-                    }
-                });
             }
 
             // サンプラー生成
@@ -1403,7 +1393,6 @@
 
             if (themeSelect) {
                 await jhtml.renderTo(themeSelect, 'tpl-theme-options', { themes: availableThemes });
-                themeSelect.addEventListener('change', updateThemeDetails);
                 updateThemeDetails();
             }
 
@@ -1417,8 +1406,22 @@
         }
     }
 
+    // サーバー・解像度・テーマのchangeイベントをjhtml.onで登録
+    jhtml.on('#sdServerSelect', 'change', () => {
+        if (typeof updateServerDetails === 'function') updateServerDetails(true);
+    });
+    jhtml.on('#resolutionPreset', 'change', (e) => {
+        if (e.target.value === 'custom') return;
+        const parts = e.target.value.split('x').map(Number);
+        if (parts.length === 2 && parts[0] && parts[1]) {
+            if (widthInput) widthInput.value = parts[0];
+            if (heightInput) heightInput.value = parts[1];
+        }
+    });
+    jhtml.on('#themeSelect', 'change', updateThemeDetails);
+
     // 「🔄 既定値に戻す」ボタン
-    jhtml.$('resetBtn')?.addEventListener('click', () => {
+    jhtml.on('#resetBtn', 'click', () => {
         if (!confirm('すべての入力パラメータを初期の既定値に戻しますか？')) return;
         applyDefaultParams(true);
     });
@@ -1505,7 +1508,7 @@
     }
 
     // 手動キャンセルボタン
-    cancelBtn?.addEventListener('click', async () => {
+    jhtml.on('#cancelBtn', 'click', async () => {
         if (typeof pollInterval === 'function') {
             pollInterval();
         } else if (pollInterval) {
@@ -1544,7 +1547,7 @@
     });
 
     // 画面遷移・離脱時の確認ダイアログ
-    document.addEventListener('click', (e) => {
+    jhtml.on(document, 'click', (e) => {
         const link = e.target.closest('a');
         if (!link || !link.href) return;
         // ダウンロードリンクやページ内アンカー、スクリプト実行リンクは除外
@@ -1597,7 +1600,7 @@
         }
     };
 
-    window.addEventListener('beforeunload', (e) => {
+    jhtml.on(window, 'beforeunload', (e) => {
         if (currentTaskId) {
             handleUnloadCancel();
             e.preventDefault();
@@ -1606,7 +1609,7 @@
         }
     });
 
-    window.addEventListener('pagehide', handleUnloadCancel);
+    jhtml.on(window, 'pagehide', handleUnloadCancel);
 
     // サーバーへ画像保存リクエスト
     async function saveImageToServer() {
@@ -1680,12 +1683,12 @@
     }
 
     // 手動「💾 この画像を保存」ボタン
-    manualSaveBtn?.addEventListener('click', async () => {
+    jhtml.on('#manualSaveBtn', 'click', async () => {
         await saveImageToServer();
     });
 
     // フォーム送信（画像生成実行）
-    jhtml.$('#generateForm')?.addEventListener('submit', async (e) => {
+    jhtml.on('#generateForm', 'submit', async (e) => {
         e.preventDefault();
 
         const prompt = promptInput?.value.trim() || '';
