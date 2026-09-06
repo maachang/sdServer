@@ -1831,11 +1831,13 @@
                         jhtml.show(translatedPromptRow);
                     }
 
+                    const previewSrc = data.imageDataUrl || data.image_path || (data.base64Data ? `data:image/png;base64,${data.base64Data}` : '');
+                    if (emptyPreview) jhtml.hide(emptyPreview);
                     if (resultImage) {
-                        resultImage.src = data.image_path;
+                        resultImage.src = previewSrc;
                         jhtml.show(resultImage);
                     }
-                    if (downloadBtn) downloadBtn.href = data.image_path;
+                    if (downloadBtn) downloadBtn.href = previewSrc;
                     if (resultActions) {
                         jhtml.show(resultActions);
                         resultActions.style.display = 'flex';
@@ -1843,7 +1845,7 @@
                     if (resultMeta) jhtml.show(resultMeta);
 
                     // 保存確認ダイアログの表示
-                    showSaveModal(data.image_path);
+                    showSaveModal(previewSrc);
                     return true;
                 } catch (pollErr) {
                     console.error('Polling error:', pollErr);
