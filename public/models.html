@@ -492,7 +492,10 @@
         progressPollingTimer = null;
     }
 
+    let currentDeleteConfirmHandler = null;
+
     async function openDeleteModal({ title, desc, showCacheOption, cacheSizeFormatted, onConfirm }) {
+        currentDeleteConfirmHandler = onConfirm;
         await jhtml.renderTo(deleteModalContainer, 'tpl-delete-modal', {
             title,
             desc,
@@ -500,30 +503,28 @@
             cacheSizeFormatted: cacheSizeFormatted || ''
         });
 
-        const cancelBtn = jhtml.$('cancelDeleteBtn');
-        const confirmBtn = jhtml.$('confirmDeleteBtn');
-        if (cancelBtn) cancelBtn.onclick = closeDeleteModal;
-        if (confirmBtn) {
-            confirmBtn.onclick = async () => {
-                const checkEl = jhtml.$('deleteWithCacheCheck');
-                const deleteCacheChecked = checkEl ? checkEl.checked : false;
-                closeDeleteModal();
-                if (onConfirm) await onConfirm(deleteCacheChecked);
-            };
-        }
-
         jhtml.show(deleteModal, 'flex');
     }
 
     function closeDeleteModal() {
         jhtml.hide(deleteModal);
         deleteModalContainer.innerHTML = '';
+        currentDeleteConfirmHandler = null;
     }
 
-    deleteModal.addEventListener('click', (e) => {
+    jhtml.on('#deleteModalContainer', 'click', '#cancelDeleteBtn', closeDeleteModal);
+    jhtml.on('#deleteModalContainer', 'click', '#confirmDeleteBtn', async () => {
+        const checkEl = jhtml.$('deleteWithCacheCheck');
+        const deleteCacheChecked = checkEl ? checkEl.checked : false;
+        const handler = currentDeleteConfirmHandler;
+        closeDeleteModal();
+        if (handler) await handler(deleteCacheChecked);
+    });
+
+    jhtml.on('#deleteModal', 'click', (e) => {
         if (e.target === deleteModal) closeDeleteModal();
     });
-    window.addEventListener('keydown', (e) => {
+    jhtml.on(window, 'keydown', (e) => {
         if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
             closeDeleteModal();
         }

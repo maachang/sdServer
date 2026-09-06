@@ -824,24 +824,22 @@
                 dataUrl,
                 saveBtnText
             });
-
-            // モーダル内ボタンのイベント設定
-            jhtml.$('confirmSaveBtn')?.addEventListener('click', async () => {
-                hideSaveModal();
-                await saveImageToServer();
-            });
-
-            jhtml.$('confirmDiscardBtn')?.addEventListener('click', () => {
-                hideSaveModal();
-                if (saveStatusBar) saveStatusBar.className = 'save-status-bar status-unsaved';
-                if (saveStatusText) saveStatusText.textContent = '⚠️ 保存されていません（一時プレビュー表示中）';
-                if (manualSaveBtn) manualSaveBtn.style.display = 'inline-flex';
-                if (saveStatusBar) saveStatusBar.style.display = 'flex';
-            });
-
             jhtml.show(saveConfirmModal, 'flex');
         }
     }
+
+    // 保存確認モーダル内のボタン委任
+    jhtml.on('#saveConfirmModal', 'click', '#confirmSaveBtn', async () => {
+        hideSaveModal();
+        await saveImageToServer();
+    });
+    jhtml.on('#saveConfirmModal', 'click', '#confirmDiscardBtn', () => {
+        hideSaveModal();
+        if (saveStatusBar) saveStatusBar.className = 'save-status-bar status-unsaved';
+        if (saveStatusText) saveStatusText.textContent = '⚠️ 保存されていません（一時プレビュー表示中）';
+        if (manualSaveBtn) manualSaveBtn.style.display = 'inline-flex';
+        if (saveStatusBar) saveStatusBar.style.display = 'flex';
+    });
 
     function hideSaveModal() {
         if (saveConfirmModal) {
@@ -961,32 +959,25 @@
     if (themeInfoBtn) themeInfoBtn.addEventListener('click', showThemeInfoModal);
 
     // モーダル内のイベント委譲（閉じるボタン・テーマ切り替えピル）
-    if (themeInfoModal) {
-        themeInfoModal.addEventListener('click', async (e) => {
-            if (e.target === themeInfoModal) {
-                hideThemeInfoModal();
-                return;
-            }
+    jhtml.on('#themeInfoModal', 'click', async (e) => {
+        if (e.target === themeInfoModal || e.target.closest('.theme-modal-close')) {
+            hideThemeInfoModal();
+            return;
+        }
 
-            if (e.target.closest('.theme-modal-close')) {
-                hideThemeInfoModal();
-                return;
+        const pillBtn = e.target.closest('.theme-pill-btn');
+        if (pillBtn) {
+            const tid = pillBtn.dataset.themeId;
+            if (themeSelect) {
+                themeSelect.value = tid;
+                updateThemeDetails();
             }
+            await renderThemeModal(tid);
+            return;
+        }
+    });
 
-            const pillBtn = e.target.closest('.theme-pill-btn');
-            if (pillBtn) {
-                const tid = pillBtn.dataset.themeId;
-                if (themeSelect) {
-                    themeSelect.value = tid;
-                    updateThemeDetails();
-                }
-                await renderThemeModal(tid);
-                return;
-            }
-        });
-    }
-
-    window.addEventListener('keydown', (e) => {
+    jhtml.on(window, 'keydown', (e) => {
         if (e.key === 'Escape') {
             if (themeInfoModal && themeInfoModal.style.display === 'flex') {
                 hideThemeInfoModal();
@@ -1130,31 +1121,9 @@
                         optimizedNeg
                     });
 
-                    jhtml.$('closeAssistNoticeBtn')?.addEventListener('click', () => {
-                        jhtml.hide(notice);
-                    });
-
-                    jhtml.$('applyAssistBtn')?.addEventListener('click', () => {
-                        lastOriginalPrompt = promptEl.value;
-                        lastOriginalNeg = negEl ? negEl.value : '';
-
-                        promptEl.value = optimizedPrompt;
-                        if (optimizedNeg && negEl) {
-                            negEl.value = optimizedNeg;
-                        }
-
-                        notice.innerHTML = `
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>✨ <strong>AI最適化を適用しました</strong></span>
-                                <button type="button" id="undoAssistBtn" class="btn-xs" style="background: #fff; color: #db2777; border-color: #f472b6; cursor: pointer;">↩️ 元に戻す</button>
-                            </div>
-                        `;
-                        jhtml.$('undoAssistBtn')?.addEventListener('click', () => {
-                            promptEl.value = lastOriginalPrompt;
-                            if (negEl) negEl.value = lastOriginalNeg;
-                            jhtml.hide(notice);
-                        });
-                    });
+                    // 適用ボタン用に最適化結果を保持
+                    notice.dataset.optimizedPrompt = optimizedPrompt;
+                    notice.dataset.optimizedNeg = optimizedNeg;
                 }
             } else if (notice) {
                 jhtml.show(notice);
@@ -1171,8 +1140,35 @@
         }
     });
 
+    // AIアシスト通知のイベント委任
+    jhtml.on('#promptTransNotice', 'click', '#closeAssistNoticeBtn', () => {
+        jhtml.hide(promptTransNotice);
+    });
+    jhtml.on('#promptTransNotice', 'click', '#applyAssistBtn', () => {
+        const notice = promptTransNotice;
+        lastOriginalPrompt = promptInput.value;
+        lastOriginalNeg = negativePromptInput ? negativePromptInput.value : '';
+
+        promptInput.value = notice.dataset.optimizedPrompt || '';
+        if (notice.dataset.optimizedNeg && negativePromptInput) {
+            negativePromptInput.value = notice.dataset.optimizedNeg;
+        }
+
+        notice.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>✨ <strong>AI最適化を適用しました</strong></span>
+                <button type="button" id="undoAssistBtn" class="btn-xs" style="background: #fff; color: #db2777; border-color: #f472b6; cursor: pointer;">↩️ 元に戻す</button>
+            </div>
+        `;
+    });
+    jhtml.on('#promptTransNotice', 'click', '#undoAssistBtn', () => {
+        promptInput.value = lastOriginalPrompt;
+        if (negativePromptInput) negativePromptInput.value = lastOriginalNeg;
+        jhtml.hide(promptTransNotice);
+    });
+
     // 翻訳プレビューボタンイベント設定
-    translatePromptBtn?.addEventListener('click', async () => {
+    jhtml.on('#translatePromptBtn', 'click', async () => {
         const input = promptInput;
         const notice = promptTransNotice;
         const btn = translatePromptBtn;
@@ -1187,21 +1183,13 @@
                 notice.style.background = '#f0fdf4';
                 notice.style.border = '1px solid #bbf7d0';
                 notice.style.color = '#166534';
+                notice.dataset.translatedText = translated;
                 await jhtml.renderTo(notice, 'tpl-trans-notice', {
                     title: '英訳プレビュー',
                     closeBtnId: 'closePromptTransBtn',
                     applyBtnId: 'applyTransPromptBtn',
                     applyLabel: 'プロンプト欄に適用',
                     translated
-                });
-
-                jhtml.$('closePromptTransBtn')?.addEventListener('click', () => {
-                    jhtml.hide(notice);
-                });
-
-                jhtml.$('applyTransPromptBtn')?.addEventListener('click', () => {
-                    if (input) input.value = translated;
-                    jhtml.hide(notice);
                 });
             }
         } catch (e) {
@@ -1214,7 +1202,15 @@
         }
     });
 
-    translateNegBtn?.addEventListener('click', async () => {
+    jhtml.on('#promptTransNotice', 'click', '#closePromptTransBtn', () => {
+        jhtml.hide(promptTransNotice);
+    });
+    jhtml.on('#promptTransNotice', 'click', '#applyTransPromptBtn', () => {
+        if (promptInput) promptInput.value = promptTransNotice.dataset.translatedText || '';
+        jhtml.hide(promptTransNotice);
+    });
+
+    jhtml.on('#translateNegBtn', 'click', async () => {
         const input = negativePromptInput;
         const notice = negTransNotice;
         const btn = translateNegBtn;
@@ -1229,21 +1225,13 @@
                 notice.style.background = '#f0fdf4';
                 notice.style.border = '1px solid #bbf7d0';
                 notice.style.color = '#166534';
+                notice.dataset.translatedText = translated;
                 await jhtml.renderTo(notice, 'tpl-trans-notice', {
                     title: 'ネガティブ英訳プレビュー',
                     closeBtnId: 'closeNegTransBtn',
                     applyBtnId: 'applyTransNegBtn',
                     applyLabel: 'ネガティブ欄に適用',
                     translated
-                });
-
-                jhtml.$('closeNegTransBtn')?.addEventListener('click', () => {
-                    jhtml.hide(notice);
-                });
-
-                jhtml.$('applyTransNegBtn')?.addEventListener('click', () => {
-                    if (input) input.value = translated;
-                    jhtml.hide(notice);
                 });
             }
         } catch (e) {
@@ -1254,6 +1242,14 @@
         } finally {
             btn.disabled = false;
         }
+    });
+
+    jhtml.on('#negTransNotice', 'click', '#closeNegTransBtn', () => {
+        jhtml.hide(negTransNotice);
+    });
+    jhtml.on('#negTransNotice', 'click', '#applyTransNegBtn', () => {
+        if (negativePromptInput) negativePromptInput.value = negTransNotice.dataset.translatedText || '';
+        jhtml.hide(negTransNotice);
     });
 
     // 幅・高さの入力値に合わせてセレクトボックスの選択状態を同期
