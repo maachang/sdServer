@@ -652,12 +652,12 @@
                 return jhtml.render('tpl-card', enriched);
             }));
 
-            grid.innerHTML = cardHtmlList.join('');
+            imageGrid.innerHTML = cardHtmlList.join('');
 
             await renderPagination(data.total, data.limit, data.offset);
 
         } catch (e) {
-            loading.style.display = 'none';
+            loadingState.style.display = 'none';
             showToast('通信エラー: ' + e.message, 'error');
         }
     }
