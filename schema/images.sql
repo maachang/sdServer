@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS images (
     server_id TEXT DEFAULT '',
     server_name TEXT DEFAULT '',
     theme TEXT DEFAULT '',
+    group_tag TEXT DEFAULT '',
     generation_time_ms INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -25,3 +26,4 @@ CREATE TABLE IF NOT EXISTS images (
 CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_images_parent_id ON images(parent_id);
 CREATE INDEX IF NOT EXISTS idx_images_theme ON images(theme);
+CREATE INDEX IF NOT EXISTS idx_images_group_tag ON images(group_tag);

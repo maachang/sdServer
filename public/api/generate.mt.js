@@ -117,6 +117,7 @@ exports.handler = async function() {
     const userPrompt = params.prompt;
     const userNegativePrompt = params.negative_prompt || '';
     const theme = params.theme || body.theme || body.themeId || '';
+    const groupTag = params.group_tag || body.group_tag || body.groupTag || '';
 
     // 新規タスクの作成
     const newTaskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -211,6 +212,7 @@ exports.handler = async function() {
                     server_id: genResult.serverInfo?.id || params.serverId || params.server_id,
                     server_name: genResult.serverInfo?.name || '',
                     theme: theme,
+                    group_tag: groupTag,
                     generation_time_ms: durationMs
                 });
                 createdItem = imageModel.getImageById(recordId);
@@ -227,6 +229,7 @@ exports.handler = async function() {
                 durationMs: durationMs,
                 durationSec: (durationMs / 1000).toFixed(2),
                 theme: theme,
+                group_tag: groupTag,
                 translated: {
                     prompt: translatedPrompt || null,
                     negative_prompt: translatedNegativePrompt || null
@@ -246,6 +249,7 @@ exports.handler = async function() {
                     server_id: genResult.serverInfo?.id || params.serverId || params.server_id,
                     server_name: genResult.serverInfo?.name || '',
                     theme: theme,
+                    group_tag: groupTag,
                     generation_time_ms: durationMs
                 }
             };

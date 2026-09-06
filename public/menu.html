@@ -415,9 +415,19 @@
 <header data-current-page="menu" data-sub-title="画像管理・生成"></header>
 
 <div class="container">
-    <!-- 検索フォーム -->
-    <div class="search-section">
-        <input type="text" id="searchInput" class="search-input" placeholder="日本語または英語のプロンプトで検索..." />
+    <!-- 検索 & フィルターフォーム -->
+    <div class="search-section" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="searchInput" class="search-input" placeholder="日本語または英語のプロンプトで検索..." style="flex: 1; min-width: 200px;" />
+        
+        <!-- グループタグ絞り込み -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="groupTagFilterSelect" style="font-size: 13px; font-weight: 600; color: #9a3412; white-space: nowrap; margin-bottom: 0;">🏷️ グループ:</label>
+            <select id="groupTagFilterSelect" class="per-page-select" style="background: #fff7ed; border-color: #fdba74; color: #9a3412; font-weight: 500; max-width: 200px;">
+                <option value="">すべてのグループ</option>
+                <option value="__empty__">未分類のみ</option>
+            </select>
+        </div>
+
         <button id="searchBtn" class="btn btn-secondary">🔍 検索</button>
         <button id="clearBtn" class="btn btn-secondary" style="display: none;">クリア</button>
     </div>
@@ -425,6 +435,14 @@
     <div class="stats-bar">
         <span id="resultCount">読み込み中...</span>
         <div class="stats-controls">
+            <!-- 並び替え切り替え -->
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="stats-label">並び順:</span>
+                <select id="sortBySelect" class="per-page-select" style="font-weight: 500;">
+                    <option value="created_at" selected>📅 作成順（新しい順）</option>
+                    <option value="group">🏷️ グループ順 → 作成順</option>
+                </select>
+            </div>
             <!-- 表示サイズ切り替え -->
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span class="stats-label">表示:</span>
@@ -499,7 +517,10 @@
                 <strong>ネガティブ:</strong> ${negative_prompt}
             </div>
         <% } %>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+            <% if (groupTagLabel) { %>
+                <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 600;">🏷️ ${groupTagLabel}</span>
+            <% } %>
             <% if (serverName) { %>
                 <span class="badge" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">🎨 ${serverName}</span>
             <% } %>
@@ -520,6 +541,19 @@
             <% } %>
             <span class="badge">📅 ${dateStr}</span>
         </div>
+
+        <!-- グループタグ変更フォーム -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;">
+            <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                <span>🏷️ グループタグ設定:</span>
+                <span id="modalGroupTagStatus" style="color: #15803d; font-weight: normal; font-size: 11px;"></span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <input type="text" id="modalGroupTagInput" list="groupTagList" value="${group_tag || ''}" placeholder="例: キャラクタA, 風景（空欄で解除）" style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;" />
+                <button type="button" id="modalUpdateGroupTagBtn" data-id="${id}" class="btn btn-secondary btn-xs" style="white-space: nowrap; font-size: 12px; padding: 6px 12px;">変更を保存</button>
+            </div>
+        </div>
+
         <div style="margin-top: auto; display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
             <a href="/generate.html?id=${id}" class="btn btn-primary" style="flex: 1; text-align: center;">✏️ この設定で生成画面を開く</a>
             <a href="${image_path}" download="generated_${id}.png" class="btn btn-secondary" style="text-align: center;">💾 ファイル保存</a>
@@ -539,6 +573,9 @@
                 <div class="card-sub-prompt" title="英訳: ${translated_prompt}">🌐 ${translated_prompt}</div>
             <% } %>
             <div class="card-meta">
+                <% if (groupTagLabel) { %>
+                    <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 600;" title="グループ: ${groupTagLabel}">🏷️ ${groupTagLabel}</span>
+                <% } %>
                 <% if (serverName) { %>
                     <span class="badge" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;" title="生成時サーバー: ${serverName}">🎨 ${serverName}</span>
                 <% } %>
@@ -579,12 +616,14 @@
 <script>
     let currentOffset = 0;
     const {
-        perPageSelect, imageGrid, loadingState, emptyState, resultCount,
+        perPageSelect, sortBySelect, groupTagFilterSelect,
+        imageGrid, loadingState, emptyState, resultCount,
         paginationTopContainer, paginationContainer,
         paginationTopInfo, paginationTopControls, paginationInfo, paginationControls,
         previewModal, previewModalBox, searchInput, searchBtn, clearBtn
     } = jhtml.refs(
-        'perPageSelect', 'imageGrid', 'loadingState', 'emptyState', 'resultCount',
+        'perPageSelect', 'sortBySelect', 'groupTagFilterSelect',
+        'imageGrid', 'loadingState', 'emptyState', 'resultCount',
         'paginationTopContainer', 'paginationContainer',
         'paginationTopInfo', 'paginationTopControls', 'paginationInfo', 'paginationControls',
         'previewModal', 'previewModalBox', 'searchInput', 'searchBtn', 'clearBtn'
@@ -594,12 +633,42 @@
     if (perPageSelect) {
         perPageSelect.value = String(limit);
     }
+    const savedSortBy = jhtml.storage.get('images_sort_by', 'created_at');
+    if (sortBySelect) {
+        sortBySelect.value = savedSortBy;
+    }
+
     let currentKeyword = '';
+    let currentGroupTag = '';
+    let currentSortBy = savedSortBy;
+
+    // グループタグ選択肢の動的更新
+    function updateGroupTagFilterOptions(groupTags = []) {
+        if (!groupTagFilterSelect) return;
+        const selectedVal = groupTagFilterSelect.value;
+        let html = `
+            <option value="" ${selectedVal === '' ? 'selected' : ''}>すべてのグループ</option>
+            <option value="__empty__" ${selectedVal === '__empty__' ? 'selected' : ''}>未分類のみ</option>
+        `;
+        groupTags.forEach(gt => {
+            const tag = gt.group_tag || gt;
+            const countStr = gt.count ? ` (${gt.count}枚)` : '';
+            const isSel = selectedVal === tag ? 'selected' : '';
+            html += `<option value="${tag}" ${isSel}>${tag}${countStr}</option>`;
+        });
+        groupTagFilterSelect.innerHTML = html;
+    }
 
     async function loadImages(offset = 0) {
         currentOffset = offset;
         if (perPageSelect && perPageSelect.value) {
             limit = parseInt(perPageSelect.value, 10) || limit;
+        }
+        if (sortBySelect && sortBySelect.value) {
+            currentSortBy = sortBySelect.value;
+        }
+        if (groupTagFilterSelect) {
+            currentGroupTag = groupTagFilterSelect.value;
         }
 
         imageGrid.innerHTML = '';
@@ -609,6 +678,8 @@
         try {
             const params = new URLSearchParams({
                 keyword: currentKeyword,
+                groupTag: currentGroupTag,
+                sortBy: currentSortBy,
                 limit: limit,
                 offset: currentOffset
             });
@@ -621,6 +692,10 @@
                 return;
             }
 
+            if (data.groupTags && Array.isArray(data.groupTags)) {
+                updateGroupTagFilterOptions(data.groupTags);
+            }
+
             if (data.total === 0) {
                 resultCount.textContent = '0 件';
                 jhtml.show(emptyState);
@@ -631,7 +706,8 @@
 
             const startNum = currentOffset + 1;
             const endNum = Math.min(currentOffset + data.items.length, data.total);
-            resultCount.textContent = `全 ${data.total} 件中 ${startNum}〜${endNum} 件を表示`;
+            const sortLabel = currentSortBy === 'group' ? ' [グループ順]' : '';
+            resultCount.textContent = `全 ${data.total} 件中 ${startNum}〜${endNum} 件を表示${sortLabel}`;
 
             if (data.items.length === 0) {
                 jhtml.show(emptyState);
@@ -651,6 +727,7 @@
             const cardHtmlList = await Promise.all(data.items.map(item => {
                 const enriched = {
                     ...item,
+                    groupTagLabel: item.group_tag || '',
                     serverName: item.server_name || item.server_id || '',
                     themeLabel: themeNames[item.theme] || (item.theme && item.theme !== 'none' ? `🎭 ${item.theme}` : ''),
                     timeSec: item.generation_time_ms ? (item.generation_time_ms / 1000).toFixed(1) : '',
@@ -815,6 +892,71 @@
         limit = parseInt(e.target.value, 10) || 20;
         jhtml.storage.set('images_per_page', limit);
         loadImages(0);
+    });
+
+    // 並び替え順の変更
+    jhtml.on('#sortBySelect', 'change', (e) => {
+        currentSortBy = e.target.value;
+        jhtml.storage.set('images_sort_by', currentSortBy);
+        loadImages(0);
+    });
+
+    // グループタグ絞り込み変更
+    jhtml.on('#groupTagFilterSelect', 'change', (e) => {
+        currentGroupTag = e.target.value;
+        loadImages(0);
+    });
+
+    // プレビューモーダル内でのグループタグ更新
+    jhtml.on('#previewModalBox', 'click', '#modalUpdateGroupTagBtn', async (e, target) => {
+        const id = target.dataset.id;
+        const tagInput = jhtml.$('modalGroupTagInput');
+        const statusEl = jhtml.$('modalGroupTagStatus');
+        if (!id || !tagInput) return;
+
+        const newTag = tagInput.value.trim();
+        target.disabled = true;
+        if (statusEl) statusEl.textContent = '保存中...';
+
+        try {
+            const res = await jhtml.api.post('/api/images?action=updateGroupTag', {
+                id: parseInt(id, 10),
+                group_tag: newTag
+            });
+
+            if (res.success) {
+                if (statusEl) {
+                    statusEl.textContent = '✅ 保存しました';
+                    statusEl.style.color = '#15803d';
+                }
+                showToast(`グループタグを「${newTag || '未分類'}」に更新しました`, 'success');
+                
+                // キャッシュと画面の更新
+                if (loadedItemsMap.has(Number(id))) {
+                    const itm = loadedItemsMap.get(Number(id));
+                    itm.group_tag = newTag;
+                    itm.groupTagLabel = newTag;
+                }
+                if (res.groupTags) {
+                    updateGroupTagFilterOptions(res.groupTags);
+                }
+                loadImages(currentOffset);
+            } else {
+                if (statusEl) {
+                    statusEl.textContent = '❌ 更新失敗';
+                    statusEl.style.color = '#b91c1c';
+                }
+                showToast('グループタグ更新失敗: ' + (res.error || '不明なエラー'), 'error');
+            }
+        } catch (err) {
+            if (statusEl) {
+                statusEl.textContent = '❌ 通信エラー';
+                statusEl.style.color = '#b91c1c';
+            }
+            showToast('通信エラー: ' + err.message, 'error');
+        } finally {
+            target.disabled = false;
+        }
     });
 
     // 表示サイズ切り替え（大・中・小）

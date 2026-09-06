@@ -412,6 +412,19 @@
                 <div id="themeDesc" style="font-size: 11px; color: #64748b; margin-top: 4px;"></div>
             </div>
 
+            <!-- グループタグ（フォルダ・カテゴリ分類） -->
+            <div class="form-group" style="background: #fdfaf6; border: 1px solid #fed7aa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;">
+                <div class="label-row" style="margin-bottom: 4px;">
+                    <label for="groupTag" style="font-weight: 600; color: #9a3412; margin-bottom: 0;">🏷️ グループタグ (カテゴリ / フォルダ分類)</label>
+                    <span style="font-size: 11px; color: #c2410c;">※ 任意入力（1つ）</span>
+                </div>
+                <input type="text" id="groupTag" list="groupTagList" placeholder="例: キャラクタA, 風景, アイテム, テスト（空欄で未分類）" style="background: #ffffff; border-color: #fdba74;" />
+                <datalist id="groupTagList"></datalist>
+                <div style="font-size: 11px; color: #7c2d12; margin-top: 4px;">
+                    ※ 同じグループタグの画像同士を一覧でまとめて表示・並び替えできます。入力欄をクリックまたは入力で過去のタグ候補が表示されます。
+                </div>
+            </div>
+
             <div class="form-group">
                 <div class="label-row">
                     <label for="prompt">プロンプト (Prompt / 日本語入力可) <span style="color:red">*</span></label>
@@ -522,6 +535,7 @@
         <div id="resultMeta" class="result-meta">
             <div class="result-meta-item" id="usedServerRow" style="display: none;">🎨 <strong>使用SDサーバー:</strong> <span id="usedServerLabel" style="color: #166534; font-weight: 600;">-</span></div>
             <div class="result-meta-item" id="usedThemeRow" style="display: none;">🎭 <strong>生成テーマ:</strong> <span id="usedThemeLabel" style="color: #475569; font-weight: 600;">-</span></div>
+            <div class="result-meta-item" id="usedGroupTagRow" style="display: none;">🏷️ <strong>グループタグ:</strong> <span id="usedGroupTagLabel" style="color: #c2410c; font-weight: 600;">-</span></div>
             <div class="result-meta-item">⏱️ <strong>生成所要時間:</strong> <span id="spentTimeLabel">-</span></div>
             <div class="result-meta-item">🌱 <strong>使用シード値:</strong> <span id="usedSeedLabel">-</span></div>
             <div class="result-meta-item" id="translatedPromptRow" style="display: none;">
@@ -761,6 +775,8 @@
         assistPromptBtn, promptTransNotice, negTransNotice, translatePromptBtn, translateNegBtn,
         submitBtn, cancelBtn, errorBox, loadingIndicator, emptyPreview, resultImage, resultActions, downloadBtn,
         resultMeta, spentTimeLabel, usedSeedLabel, usedServerRow, usedServerLabel, usedThemeRow, usedThemeLabel,
+        usedGroupTagRow, usedGroupTagLabel,
+        groupTag: groupTagInput, groupTagList,
         translatedPromptRow, translatedPromptLabel, elapsedTimer, saveStatusBar, saveStatusText, manualSaveBtn,
         editAlert, pageModeBadge
     } = jhtml.refs(
@@ -774,6 +790,8 @@
         'assistPromptBtn', 'promptTransNotice', 'negTransNotice', 'translatePromptBtn', 'translateNegBtn',
         'submitBtn', 'cancelBtn', 'errorBox', 'loadingIndicator', 'emptyPreview', 'resultImage', 'resultActions', 'downloadBtn',
         'resultMeta', 'spentTimeLabel', 'usedSeedLabel', 'usedServerRow', 'usedServerLabel', 'usedThemeRow', 'usedThemeLabel',
+        'usedGroupTagRow', 'usedGroupTagLabel',
+        'groupTag', 'groupTagList',
         'translatedPromptRow', 'translatedPromptLabel', 'elapsedTimer', 'saveStatusBar', 'saveStatusText', 'manualSaveBtn',
         'editAlert', 'pageModeBadge'
     );
@@ -1045,6 +1063,7 @@
         if (p.prompt !== undefined) fillData.prompt = p.prompt;
         if (p.negative_prompt !== undefined) fillData.negativePrompt = p.negative_prompt;
         if (p.theme !== undefined) fillData.themeSelect = p.theme || 'none';
+        if (p.group_tag !== undefined) fillData.groupTag = p.group_tag || '';
         if (p.prompt_assist !== undefined) fillData.promptAssistCheck = p.prompt_assist;
         if (p.steps !== undefined) fillData.steps = p.steps;
         if (p.cfg_scale !== undefined) fillData.cfgScale = p.cfg_scale;
@@ -1396,6 +1415,15 @@
                 updateThemeDetails();
             }
 
+            // グループタグ候補（datalist）の構築
+            if (groupTagList && data.groupTags && Array.isArray(data.groupTags)) {
+                groupTagList.innerHTML = data.groupTags.map(gt => {
+                    const tag = gt.group_tag || gt;
+                    const count = gt.count ? ` (${gt.count}枚)` : '';
+                    return jhtml.html`<option value="${tag}">${tag}${count}</option>`;
+                }).join('');
+            }
+
             // 新規作成時は常にサーバー設定＋デフォルト設定を初期適用
             if (!currentEditId) {
                 applyDefaultParams(true);
@@ -1485,6 +1513,15 @@
                             jhtml.show(usedThemeRow);
                         } else {
                             jhtml.hide(usedThemeRow);
+                        }
+                    }
+
+                    if (usedGroupTagRow && usedGroupTagLabel) {
+                        if (item.group_tag) {
+                            usedGroupTagLabel.textContent = item.group_tag;
+                            jhtml.show(usedGroupTagRow);
+                        } else {
+                            jhtml.hide(usedGroupTagRow);
                         }
                     }
 
@@ -1619,6 +1656,7 @@
         const currentServerId = sdServerSelect?.value || '';
         const currentServer = currentServers.find(s => s.id === currentServerId);
         const currentTheme = meta.theme !== undefined ? meta.theme : (themeSelect?.value || '');
+        const currentGroupTag = (meta.group_tag !== undefined ? meta.group_tag : (groupTagInput?.value || '')).trim();
 
         const payload = {
             id: currentEditId ? parseInt(currentEditId, 10) : null,
@@ -1637,6 +1675,7 @@
             server_id: meta.server_id || currentServerId,
             server_name: meta.server_name || currentServer?.name || '',
             theme: currentTheme,
+            group_tag: currentGroupTag,
             generation_time_ms: meta.generation_time_ms
         };
 
@@ -1725,6 +1764,7 @@
         const fData = jhtml.form('#generateForm');
         const isAssist = fData.promptAssistCheck ?? true;
         const selectedTheme = fData.themeSelect || '';
+        const groupTag = (fData.groupTag || '').trim();
         const payload = {
             serverId: fData.sdServerSelect || null,
             prompt: prompt,
@@ -1732,6 +1772,7 @@
             promptMode: isAssist ? 'assist' : 'direct',
             promptAssist: isAssist,
             theme: selectedTheme,
+            group_tag: groupTag,
             width: fData.width || 512,
             height: fData.height || 512,
             steps: fData.steps || 20,
@@ -1822,6 +1863,16 @@
                             jhtml.show(usedThemeRow);
                         } else {
                             jhtml.hide(usedThemeRow);
+                        }
+                    }
+
+                    const effectiveGroupTag = data.group_tag || groupTag;
+                    if (usedGroupTagRow && usedGroupTagLabel) {
+                        if (effectiveGroupTag) {
+                            usedGroupTagLabel.textContent = effectiveGroupTag;
+                            jhtml.show(usedGroupTagRow);
+                        } else {
+                            jhtml.hide(usedGroupTagRow);
                         }
                     }
                     

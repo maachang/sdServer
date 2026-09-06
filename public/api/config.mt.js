@@ -22,6 +22,9 @@ exports.handler = async function() {
     const servers = sdClient && sdClient.getServerList ? sdClient.getServerList() : (conf.servers || []);
     const activeServer = conf.activeServer || (servers[0] ? servers[0].id : 'default');
 
+    const imageModel = $loadLib('imageModel.js');
+    const groupTags = imageModel && imageModel.getGroupTags ? imageModel.getGroupTags() : [];
+
     return {
         success: true,
         servers: servers,
@@ -35,6 +38,7 @@ exports.handler = async function() {
             seed: -1
         },
         options: conf.options || {},
+        groupTags: groupTags,
         llm: {
             activeModel: llmConf.activeModel || 'onnx-community/Qwen2.5-1.5B-Instruct',
             activeModelName: activeModelName

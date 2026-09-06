@@ -61,5 +61,11 @@ module.exports = {
         type: 'string',
         required: false,
         default: ''
+    },
+    group_tag: {
+        type: 'string',
+        required: false,
+        maxLen: 100,
+        default: ''
     }
 };
