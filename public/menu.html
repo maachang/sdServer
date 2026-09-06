@@ -335,7 +335,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.85);
+            background-color: rgba(0,0,0,0.8);
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -343,33 +343,70 @@
         .modal.open {
             display: flex;
         }
-        .modal-content {
-            max-width: 90vw;
+        .modal-box {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            max-width: 95vw;
             max-height: 90vh;
+            width: 1000px;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+        @media (max-width: 768px) {
+            .modal-box {
+                flex-direction: column;
+                max-height: 95vh;
+                overflow-y: auto;
+            }
+        }
+        .modal-preview-img-wrap {
+            flex: 1.2;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            min-height: 300px;
+        }
+        .modal-preview-img {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
             border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            cursor: default;
+        }
+        .modal-preview-info {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            overflow-y: auto;
+            max-height: 90vh;
         }
         .modal-close {
             position: absolute;
-            top: 20px;
-            right: 24px;
-            font-size: 28px;
-            color: #ffffff;
-            background: rgba(0, 0, 0, 0.4);
+            top: 14px;
+            right: 16px;
+            font-size: 24px;
+            color: #64748b;
+            background: #f1f5f9;
             border: none;
             border-radius: 50%;
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.2s ease, transform 0.15s ease;
+            transition: all 0.15s ease;
+            z-index: 10;
         }
         .modal-close:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: scale(1.1);
+            background: #e2e8f0;
+            color: #0f172a;
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -436,9 +473,59 @@
 
 <!-- プレビューモーダル -->
 <div id="previewModal" class="modal" data-action="close-modal">
-    <button type="button" class="modal-close" data-action="close-modal" title="閉じる (Esc)">✕</button>
-    <img id="modalImg" class="modal-content" src="" alt="Preview">
+    <div id="previewModalBox" class="modal-box" onclick="event.stopPropagation()"></div>
 </div>
+
+<!-- JHTML プレビューモーダルテンプレート -->
+<script type="text/jhtml" id="tpl-preview-modal">
+    <button type="button" class="modal-close" data-action="close-modal" title="閉じる (Esc)">✕</button>
+    <div class="modal-preview-img-wrap">
+        <img src="${image_path}" alt="Preview" class="modal-preview-img" />
+    </div>
+    <div class="modal-preview-info">
+        <div style="font-size: 11px; font-weight: 700; color: #6366f1; text-transform: uppercase; margin-bottom: 6px;">
+            Image Details (#${id})
+        </div>
+        <div style="font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 8px; line-height: 1.4; word-break: break-all;">
+            ${prompt}
+        </div>
+        <% if (translated_prompt && translated_prompt !== prompt) { %>
+            <div style="font-size: 12px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; line-height: 1.4; word-break: break-all;">
+                🌐 <strong>英訳:</strong> ${translated_prompt}
+            </div>
+        <% } %>
+        <% if (negative_prompt) { %>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 12px; word-break: break-all;">
+                <strong>ネガティブ:</strong> ${negative_prompt}
+            </div>
+        <% } %>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+            <% if (serverName) { %>
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">🎨 ${serverName}</span>
+            <% } %>
+            <% if (themeLabel) { %>
+                <span class="badge" style="background: #eef2ff; color: #4338ca; border-color: #c7d2fe;">${themeLabel}</span>
+            <% } %>
+            <span class="badge">📐 ${width}x${height}</span>
+            <span class="badge">⚡ Steps: ${steps}</span>
+            <span class="badge">🎚️ CFG: ${cfg_scale}</span>
+            <% if (sampler_name) { %>
+                <span class="badge">🎯 ${sampler_name}</span>
+            <% } %>
+            <% if (seed !== undefined && seed !== null) { %>
+                <span class="badge">🎲 Seed: ${seed}</span>
+            <% } %>
+            <% if (timeSec) { %>
+                <span class="badge badge-time">⏱️ ${timeSec}s</span>
+            <% } %>
+            <span class="badge">📅 ${dateStr}</span>
+        </div>
+        <div style="margin-top: auto; display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
+            <a href="/generate.html?id=${id}" class="btn btn-primary" style="flex: 1; text-align: center;">✏️ この設定で生成画面を開く</a>
+            <a href="${image_path}" download="generated_${id}.png" class="btn btn-secondary" style="text-align: center;">💾 保存</a>
+        </div>
+    </div>
+</script>
 
 <!-- JHTML カードテンプレート -->
 <script type="text/jhtml" id="tpl-card">
@@ -491,30 +578,25 @@
 
 <script>
     let currentOffset = 0;
-    const perPageSelectEl = document.getElementById('perPageSelect');
-    const savedLimit = parseInt(localStorage.getItem('images_per_page') || perPageSelectEl?.value, 10) || 20;
+    const { perPageSelect, imageGrid, loadingState, emptyState, resultCount, paginationTopContainer, paginationContainer } = jhtml.refs(
+        'perPageSelect', 'imageGrid', 'loadingState', 'emptyState', 'resultCount', 'paginationTopContainer', 'paginationContainer'
+    );
+    const savedLimit = parseInt(localStorage.getItem('images_per_page') || perPageSelect?.value, 10) || 20;
     let limit = savedLimit;
-    if (perPageSelectEl) {
-        perPageSelectEl.value = String(limit);
+    if (perPageSelect) {
+        perPageSelect.value = String(limit);
     }
     let currentKeyword = '';
 
     async function loadImages(offset = 0) {
         currentOffset = offset;
-        const perPageEl = document.getElementById('perPageSelect');
-        if (perPageEl && perPageEl.value) {
-            limit = parseInt(perPageEl.value, 10) || limit;
+        if (perPageSelect && perPageSelect.value) {
+            limit = parseInt(perPageSelect.value, 10) || limit;
         }
-        const grid = document.getElementById('imageGrid');
-        const loading = document.getElementById('loadingState');
-        const empty = document.getElementById('emptyState');
-        const countSpan = document.getElementById('resultCount');
-        const topPagContainer = document.getElementById('paginationTopContainer');
-        const bottomPagContainer = document.getElementById('paginationContainer');
 
-        grid.innerHTML = '';
-        loading.style.display = 'block';
-        empty.style.display = 'none';
+        imageGrid.innerHTML = '';
+        loadingState.style.display = 'block';
+        emptyState.style.display = 'none';
 
         try {
             const params = new URLSearchParams({
@@ -524,7 +606,7 @@
             });
             const data = await jhtml.api.get(`/api/images?${params.toString()}`);
 
-            loading.style.display = 'none';
+            loadingState.style.display = 'none';
 
             if (!data.success) {
                 showToast('画像取得エラー: ' + (data.error || '不明なエラー'), 'error');
@@ -532,21 +614,21 @@
             }
 
             if (data.total === 0) {
-                countSpan.textContent = '0 件';
-                empty.style.display = 'block';
-                if (topPagContainer) topPagContainer.style.display = 'none';
-                if (bottomPagContainer) bottomPagContainer.style.display = 'none';
+                resultCount.textContent = '0 件';
+                emptyState.style.display = 'block';
+                if (paginationTopContainer) paginationTopContainer.style.display = 'none';
+                if (paginationContainer) paginationContainer.style.display = 'none';
                 return;
             }
 
             const startNum = currentOffset + 1;
             const endNum = Math.min(currentOffset + data.items.length, data.total);
-            countSpan.textContent = `全 ${data.total} 件中 ${startNum}〜${endNum} 件を表示`;
+            resultCount.textContent = `全 ${data.total} 件中 ${startNum}〜${endNum} 件を表示`;
 
             if (data.items.length === 0) {
-                empty.style.display = 'block';
-                if (topPagContainer) topPagContainer.style.display = 'none';
-                if (bottomPagContainer) bottomPagContainer.style.display = 'none';
+                emptyState.style.display = 'block';
+                if (paginationTopContainer) paginationTopContainer.style.display = 'none';
+                if (paginationContainer) paginationContainer.style.display = 'none';
                 return;
             }
 
@@ -557,14 +639,17 @@
                 'pixel_art': '👾 ドット絵', 'steampunk': '⚙️ スチームパンク'
             };
 
+            loadedItemsMap.clear();
             const cardHtmlList = await Promise.all(data.items.map(item => {
-                return jhtml.render('tpl-card', {
+                const enriched = {
                     ...item,
                     serverName: item.server_name || item.server_id || '',
                     themeLabel: themeNames[item.theme] || (item.theme && item.theme !== 'none' ? `🎭 ${item.theme}` : ''),
                     timeSec: item.generation_time_ms ? (item.generation_time_ms / 1000).toFixed(1) : '',
                     dateStr: item.created_at ? new Date(item.created_at).toLocaleString('ja-JP') : ''
-                });
+                };
+                loadedItemsMap.set(item.id, enriched);
+                return jhtml.render('tpl-card', enriched);
             }));
 
             grid.innerHTML = cardHtmlList.join('');
@@ -652,11 +737,17 @@
         }
     }
 
-    function openModal(src) {
-        const modal = document.getElementById('previewModal');
-        const img = document.getElementById('modalImg');
-        img.src = src;
-        modal.classList.add('open');
+    let loadedItemsMap = new Map();
+
+    async function openModal(id) {
+        const item = loadedItemsMap.get(Number(id)) || loadedItemsMap.get(String(id));
+        if (!item) return;
+
+        const modalBox = document.getElementById('previewModalBox');
+        if (modalBox) {
+            modalBox.innerHTML = await jhtml.render('tpl-preview-modal', item);
+        }
+        document.getElementById('previewModal').classList.add('open');
     }
 
     function closeModal() {
@@ -683,11 +774,12 @@
     });
 
     // グリッド内のイベント委譲（画像プレビュー・削除）
-    document.getElementById('imageGrid').addEventListener('click', (e) => {
+    jhtml.on('#imageGrid', 'click', (e) => {
         const previewEl = e.target.closest('[data-action="preview"]');
         if (previewEl) {
-            const src = previewEl.dataset.src || previewEl.getAttribute('src');
-            if (src) openModal(src);
+            const card = previewEl.closest('.card');
+            const id = card ? card.dataset.id : null;
+            if (id) openModal(id);
             return;
         }
 

@@ -987,71 +987,64 @@
         const defs = serverDefaults || {};
 
         if (clearPrompt) {
-            document.getElementById('prompt').value = '';
-            document.getElementById('negativePrompt').value = '';
-            if (document.getElementById('themeSelect')) {
-                document.getElementById('themeSelect').value = 'none';
-                updateThemeDetails();
-            }
-            if (document.getElementById('promptAssistCheck')) {
-                document.getElementById('promptAssistCheck').checked = true;
-            }
-            document.getElementById('promptTransNotice').style.display = 'none';
-            document.getElementById('negTransNotice').style.display = 'none';
+            jhtml.form.fill('#generateForm', {
+                prompt: '',
+                negativePrompt: '',
+                themeSelect: 'none',
+                promptAssistCheck: true
+            });
+            updateThemeDetails();
+            jhtml.hide('#promptTransNotice');
+            jhtml.hide('#negTransNotice');
         }
 
         const targetW = srvDefs.width || defs.width || 512;
         const targetH = srvDefs.height || defs.height || 512;
-        if (srvDefs.width && srvDefs.height) {
-            document.getElementById('width').value = targetW;
-            document.getElementById('height').value = targetH;
-            syncResolutionPreset(targetW, targetH);
-        } else if (clearPrompt) {
-            document.getElementById('width').value = targetW;
-            document.getElementById('height').value = targetH;
+        const fillData = {};
+
+        if ((srvDefs.width && srvDefs.height) || clearPrompt) {
+            fillData.width = targetW;
+            fillData.height = targetH;
             syncResolutionPreset(targetW, targetH);
         }
 
         if (srvDefs.steps !== undefined || clearPrompt) {
-            document.getElementById('steps').value = srvDefs.steps || defs.steps || 20;
+            fillData.steps = srvDefs.steps || defs.steps || 20;
         }
         if (srvDefs.cfg_scale !== undefined || clearPrompt) {
-            document.getElementById('cfgScale').value = srvDefs.cfg_scale !== undefined ? srvDefs.cfg_scale : (defs.cfg_scale !== undefined ? defs.cfg_scale : 7.0);
+            fillData.cfgScale = srvDefs.cfg_scale !== undefined ? srvDefs.cfg_scale : (defs.cfg_scale !== undefined ? defs.cfg_scale : 7.0);
         }
         if (srvDefs.seed !== undefined || clearPrompt) {
-            document.getElementById('seed').value = srvDefs.seed !== undefined ? srvDefs.seed : (defs.seed !== undefined ? defs.seed : -1);
+            fillData.seed = srvDefs.seed !== undefined ? srvDefs.seed : (defs.seed !== undefined ? defs.seed : -1);
         }
         if (srvDefs.sampler_name || clearPrompt) {
-            if (document.getElementById('sampler')) {
-                document.getElementById('sampler').value = srvDefs.sampler_name || defs.sampler_name || 'euler_a';
-            }
+            fillData.sampler = srvDefs.sampler_name || defs.sampler_name || 'euler_a';
         }
+
+        jhtml.form.fill('#generateForm', fillData);
     }
 
     function applyParams(p) {
         if (!p) return;
-        if (p.prompt !== undefined) document.getElementById('prompt').value = p.prompt;
-        if (p.negative_prompt !== undefined) document.getElementById('negativePrompt').value = p.negative_prompt;
-        if (p.theme !== undefined && document.getElementById('themeSelect')) {
-            document.getElementById('themeSelect').value = p.theme || 'none';
-            updateThemeDetails();
-        }
-        if (p.prompt_assist !== undefined && document.getElementById('promptAssistCheck')) {
-            document.getElementById('promptAssistCheck').checked = p.prompt_assist;
-        }
-        
         const w = p.width || (serverDefaults && serverDefaults.width) || 512;
         const h = p.height || (serverDefaults && serverDefaults.height) || 512;
-        document.getElementById('width').value = w;
-        document.getElementById('height').value = h;
-        syncResolutionPreset(w, h);
 
-        if (p.steps !== undefined) document.getElementById('steps').value = p.steps;
-        if (p.cfg_scale !== undefined) document.getElementById('cfgScale').value = p.cfg_scale;
-        if (p.seed !== undefined) document.getElementById('seed').value = p.seed;
-        if (p.sampler_name && document.getElementById('sampler')) {
-            document.getElementById('sampler').value = p.sampler_name;
-        }
+        const fillData = {
+            width: w,
+            height: h
+        };
+        if (p.prompt !== undefined) fillData.prompt = p.prompt;
+        if (p.negative_prompt !== undefined) fillData.negativePrompt = p.negative_prompt;
+        if (p.theme !== undefined) fillData.themeSelect = p.theme || 'none';
+        if (p.prompt_assist !== undefined) fillData.promptAssistCheck = p.prompt_assist;
+        if (p.steps !== undefined) fillData.steps = p.steps;
+        if (p.cfg_scale !== undefined) fillData.cfgScale = p.cfg_scale;
+        if (p.seed !== undefined) fillData.seed = p.seed;
+        if (p.sampler_name) fillData.sampler = p.sampler_name;
+
+        jhtml.form.fill('#generateForm', fillData);
+        syncResolutionPreset(w, h);
+        if (p.theme !== undefined) updateThemeDetails();
     }
 
     // 単語・文章翻訳共通関数

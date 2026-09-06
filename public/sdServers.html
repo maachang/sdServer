@@ -593,9 +593,7 @@
     }
 
     // イベント委譲で各サーバーカードの操作をハンドリング
-    document.getElementById('serverList').addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
+    jhtml.on('#serverList', 'click', 'button', (e, target) => {
         const id = target.dataset.id;
         if (!id) return;
 
@@ -612,11 +610,13 @@
 
     function renderDefaults() {
         const defs = serverConfig.defaults || {};
-        if (defs.width) document.getElementById('defWidth').value = defs.width;
-        if (defs.height) document.getElementById('defHeight').value = defs.height;
-        if (defs.steps) document.getElementById('defSteps').value = defs.steps;
-        if (defs.cfg_scale) document.getElementById('defCfg').value = defs.cfg_scale;
-        if (defs.sampler_name) document.getElementById('defSampler').value = defs.sampler_name;
+        jhtml.form.fill('#defaultsForm', {
+            defWidth: defs.width || 512,
+            defHeight: defs.height || 512,
+            defSteps: defs.steps || 20,
+            defCfg: defs.cfg_scale !== undefined ? defs.cfg_scale : 7.0,
+            defSampler: defs.sampler_name || 'euler_a'
+        });
     }
 
     async function setActive(serverId) {
@@ -692,83 +692,109 @@
     }
 
     // モーダル操作
-    const modal = document.getElementById('serverModal');
-    const form = document.getElementById('serverForm');
-    const endpointSelect = document.getElementById('serverEndpointSelect');
-    const endpointCustom = document.getElementById('serverEndpointCustom');
-    const modalTestResult = document.getElementById('modalTestResult');
+    const {
+        serverModal: modal,
+        serverForm: form,
+        serverEndpointSelect: endpointSelect,
+        serverEndpointCustom: endpointCustom,
+        modalTestResult,
+        modalTitle,
+        formIsEdit,
+        serverId: serverIdInput,
+        serverName: serverNameInput,
+        serverModelType: serverModelTypeSelect,
+        serverBaseUrl: serverBaseUrlInput,
+        serverTimeoutSec: serverTimeoutInput,
+        serverDesc: serverDescInput,
+        srvDefWidth: srvDefWidthInput,
+        srvDefHeight: srvDefHeightInput,
+        srvDefSteps: srvDefStepsInput,
+        srvDefCfg: srvDefCfgInput,
+        srvDefSampler: srvDefSamplerSelect
+    } = jhtml.refs(
+        'serverModal', 'serverForm', 'serverEndpointSelect', 'serverEndpointCustom', 'modalTestResult',
+        'modalTitle', 'formIsEdit', 'serverId', 'serverName', 'serverModelType', 'serverBaseUrl',
+        'serverTimeoutSec', 'serverDesc', 'srvDefWidth', 'srvDefHeight', 'srvDefSteps', 'srvDefCfg', 'srvDefSampler'
+    );
 
     endpointSelect.addEventListener('change', (e) => {
         if (e.target.value === 'custom') {
-            endpointCustom.style.display = 'block';
+            jhtml.show(endpointCustom);
             endpointCustom.required = true;
         } else {
-            endpointCustom.style.display = 'none';
+            jhtml.hide(endpointCustom);
             endpointCustom.required = false;
         }
     });
 
     document.getElementById('addServerBtn').addEventListener('click', () => {
-        document.getElementById('modalTitle').textContent = '新しい SD サーバーを追加';
-        document.getElementById('formIsEdit').value = '0';
-        document.getElementById('serverId').readOnly = false;
+        modalTitle.textContent = '新しい SD サーバーを追加';
+        formIsEdit.value = '0';
+        serverIdInput.readOnly = false;
         form.reset();
-        document.getElementById('serverId').value = `server-${Date.now().toString().slice(-4)}`;
-        document.getElementById('serverModelType').value = 'sd15';
-        document.getElementById('serverBaseUrl').value = 'http://192.168.0.233:8080';
-        document.getElementById('serverTimeoutSec').value = '600';
-        endpointSelect.value = '/sdapi/v1/txt2img';
-        endpointCustom.style.display = 'none';
-        
-        document.getElementById('srvDefWidth').value = '';
-        document.getElementById('srvDefHeight').value = '';
-        document.getElementById('srvDefSteps').value = '';
-        document.getElementById('srvDefCfg').value = '';
-        document.getElementById('srvDefSampler').value = '';
 
-        modalTestResult.style.display = 'none';
-        modal.style.display = 'flex';
+        jhtml.form.fill('#serverForm', {
+            serverId: `server-${Date.now().toString().slice(-4)}`,
+            serverModelType: 'sd15',
+            serverBaseUrl: 'http://192.168.0.233:8080',
+            serverTimeoutSec: 600,
+            serverEndpointSelect: '/sdapi/v1/txt2img',
+            serverEndpointCustom: '',
+            serverDesc: '',
+            srvDefWidth: '',
+            srvDefHeight: '',
+            srvDefSteps: '',
+            srvDefCfg: '',
+            srvDefSampler: ''
+        });
+        jhtml.hide(endpointCustom);
+
+        jhtml.hide(modalTestResult);
+        jhtml.show(modal, 'flex');
     });
 
     function openEditModal(serverId) {
         const srv = (serverConfig.servers || []).find(s => s.id === serverId);
         if (!srv) return;
 
-        document.getElementById('modalTitle').textContent = 'SD サーバーの編集';
-        document.getElementById('formIsEdit').value = '1';
-        document.getElementById('serverId').value = srv.id;
-        document.getElementById('serverId').readOnly = true;
-        document.getElementById('serverName').value = srv.name || '';
-        document.getElementById('serverModelType').value = srv.modelType || 'sd15';
-        document.getElementById('serverBaseUrl').value = srv.baseUrl || '';
-        document.getElementById('serverTimeoutSec').value = Math.round((srv.timeoutMs || 600000) / 1000);
-        document.getElementById('serverDesc').value = srv.description || '';
-
-        const srvDef = srv.defaults || {};
-        document.getElementById('srvDefWidth').value = srvDef.width || '';
-        document.getElementById('srvDefHeight').value = srvDef.height || '';
-        document.getElementById('srvDefSteps').value = srvDef.steps || '';
-        document.getElementById('srvDefCfg').value = srvDef.cfg_scale !== undefined ? srvDef.cfg_scale : '';
-        document.getElementById('srvDefSampler').value = srvDef.sampler_name || '';
+        modalTitle.textContent = 'SD サーバーの編集';
+        formIsEdit.value = '1';
+        serverIdInput.readOnly = true;
 
         const ep = srv.endpoint || '/sdapi/v1/txt2img';
-        if (ep === '/sdapi/v1/txt2img' || ep === '/v1/images/generations') {
-            endpointSelect.value = ep;
-            endpointCustom.style.display = 'none';
-            endpointCustom.required = false;
-        } else {
-            endpointSelect.value = 'custom';
-            endpointCustom.value = ep;
-            endpointCustom.style.display = 'block';
+        const isCustomEp = !(ep === '/sdapi/v1/txt2img' || ep === '/v1/images/generations');
+        const srvDef = srv.defaults || {};
+
+        jhtml.form.fill('#serverForm', {
+            serverId: srv.id,
+            serverName: srv.name || '',
+            serverModelType: srv.modelType || 'sd15',
+            serverBaseUrl: srv.baseUrl || '',
+            serverTimeoutSec: Math.round((srv.timeoutMs || 600000) / 1000),
+            serverDesc: srv.description || '',
+            serverEndpointSelect: isCustomEp ? 'custom' : ep,
+            serverEndpointCustom: isCustomEp ? ep : '',
+            srvDefWidth: srvDef.width || '',
+            srvDefHeight: srvDef.height || '',
+            srvDefSteps: srvDef.steps || '',
+            srvDefCfg: srvDef.cfg_scale !== undefined ? srvDef.cfg_scale : '',
+            srvDefSampler: srvDef.sampler_name || ''
+        });
+
+        if (isCustomEp) {
+            jhtml.show(endpointCustom);
             endpointCustom.required = true;
+        } else {
+            jhtml.hide(endpointCustom);
+            endpointCustom.required = false;
         }
 
-        modalTestResult.style.display = 'none';
-        modal.style.display = 'flex';
+        jhtml.hide(modalTestResult);
+        jhtml.show(modal, 'flex');
     }
 
     function closeModal() {
-        modal.style.display = 'none';
+        jhtml.hide(modal);
     }
 
     document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
@@ -821,23 +847,23 @@
     // サーバー保存送信
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const id = document.getElementById('serverId').value.trim();
-        const name = document.getElementById('serverName').value.trim();
-        const modelType = document.getElementById('serverModelType').value.trim() || 'sd15';
-        const baseUrl = document.getElementById('serverBaseUrl').value.trim();
-        const timeoutSec = parseInt(document.getElementById('serverTimeoutSec').value, 10) || 600;
-        const description = document.getElementById('serverDesc').value.trim();
+        const id = serverIdInput.value.trim();
+        const name = serverNameInput.value.trim();
+        const modelType = serverModelTypeSelect.value.trim() || 'sd15';
+        const baseUrl = serverBaseUrlInput.value.trim();
+        const timeoutSec = parseInt(serverTimeoutInput.value, 10) || 600;
+        const description = serverDescInput.value.trim();
 
         let endpoint = endpointSelect.value;
         if (endpoint === 'custom') {
             endpoint = endpointCustom.value.trim();
         }
 
-        const defWidth = document.getElementById('srvDefWidth').value;
-        const defHeight = document.getElementById('srvDefHeight').value;
-        const defSteps = document.getElementById('srvDefSteps').value;
-        const defCfg = document.getElementById('srvDefCfg').value;
-        const defSampler = document.getElementById('srvDefSampler').value;
+        const defWidth = srvDefWidthInput.value;
+        const defHeight = srvDefHeightInput.value;
+        const defSteps = srvDefStepsInput.value;
+        const defCfg = srvDefCfgInput.value;
+        const defSampler = srvDefSamplerSelect.value;
 
         const serverDefaults = {};
         if (defWidth) serverDefaults.width = parseInt(defWidth, 10);
@@ -860,7 +886,7 @@
             });
             if (json.success) {
                 showAlert(json.message || 'サーバーを保存しました');
-                modal.style.display = 'none';
+                jhtml.hide(modal);
                 serverConfig = json.data;
                 renderServers();
             } else {
@@ -874,13 +900,14 @@
     // 共通既定パラメータ保存送信
     document.getElementById('defaultsForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const formData = jhtml.form('#defaultsForm');
         const payload = {
             action: 'saveDefaults',
-            width: parseInt(document.getElementById('defWidth').value, 10),
-            height: parseInt(document.getElementById('defHeight').value, 10),
-            steps: parseInt(document.getElementById('defSteps').value, 10),
-            cfg_scale: parseFloat(document.getElementById('defCfg').value),
-            sampler_name: document.getElementById('defSampler').value
+            width: parseInt(formData.defWidth, 10),
+            height: parseInt(formData.defHeight, 10),
+            steps: parseInt(formData.defSteps, 10),
+            cfg_scale: parseFloat(formData.defCfg),
+            sampler_name: formData.defSampler
         };
 
         try {
