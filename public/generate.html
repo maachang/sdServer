@@ -414,14 +414,27 @@
 
             <!-- グループタグ（フォルダ・カテゴリ分類） -->
             <div class="form-group" style="background: #fdfaf6; border: 1px solid #fed7aa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;">
-                <div class="label-row" style="margin-bottom: 4px;">
-                    <label for="groupTag" style="font-weight: 600; color: #9a3412; margin-bottom: 0;">🏷️ グループタグ (カテゴリ / フォルダ分類)</label>
-                    <span style="font-size: 11px; color: #c2410c;">※ 任意入力（1つ）</span>
+                <div class="label-row" style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                    <label for="groupTagSelect" style="font-weight: 600; color: #9a3412; margin-bottom: 0;">🏷️ グループタグ (カテゴリ / フォルダ分類)</label>
+                    <span id="groupTagSaveStatus" style="font-size: 11px; color: #15803d; font-weight: normal;"></span>
                 </div>
-                <input type="text" id="groupTag" list="groupTagList" placeholder="例: キャラクタA, 風景, アイテム, テスト（空欄で未分類）" style="background: #ffffff; border-color: #fdba74;" />
-                <datalist id="groupTagList"></datalist>
-                <div style="font-size: 11px; color: #7c2d12; margin-top: 4px;">
-                    ※ 同じグループタグの画像同士を一覧でまとめて表示・並び替えできます。入力欄をクリックまたは入力で過去のタグ候補が表示されます。
+                <!-- 既存のグループから選択 -->
+                <div style="margin-bottom: 8px;">
+                    <label for="groupTagSelect" style="display: block; font-size: 11px; color: #7c2d12; margin-bottom: 3px; font-weight: 600;">登録済みのグループから選択:</label>
+                    <select id="groupTagSelect" style="width: 100%; padding: 6px 10px; font-size: 12px; border: 1px solid #fdba74; border-radius: 4px; background: #ffffff;">
+                        <option value="">-- 未分類 (グループなし) --</option>
+                    </select>
+                </div>
+                <!-- 新しいグループタグを登録する場合 -->
+                <div>
+                    <label for="newGroupTagInput" style="display: block; font-size: 11px; color: #7c2d12; margin-bottom: 3px; font-weight: 600;">新しいグループタグを登録・指定:</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="text" id="newGroupTagInput" placeholder="新しいグループ名を入力" style="flex: 1; padding: 6px 10px; font-size: 12px; background: #ffffff; border: 1px solid #fdba74; border-radius: 4px;" />
+                        <button type="button" id="editGroupTagSaveBtn" class="btn btn-secondary btn-xs" style="display: none; white-space: nowrap; font-size: 12px; padding: 6px 12px; font-weight: 600;">保存</button>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #9a3412; margin-top: 6px; line-height: 1.4;">
+                    <span id="groupTagHelpText">※ 既存タグの選択または新しいタグの入力が可能です。画像生成後の保存時にタグが登録されます。</span>
                 </div>
             </div>
 
@@ -776,7 +789,7 @@
         submitBtn, cancelBtn, errorBox, loadingIndicator, emptyPreview, resultImage, resultActions, downloadBtn,
         resultMeta, spentTimeLabel, usedSeedLabel, usedServerRow, usedServerLabel, usedThemeRow, usedThemeLabel,
         usedGroupTagRow, usedGroupTagLabel,
-        groupTag: groupTagInput, groupTagList,
+        groupTagSelect, newGroupTagInput, editGroupTagSaveBtn, groupTagSaveStatus, groupTagHelpText,
         translatedPromptRow, translatedPromptLabel, elapsedTimer, saveStatusBar, saveStatusText, manualSaveBtn,
         editAlert, pageModeBadge
     } = jhtml.refs(
@@ -791,7 +804,7 @@
         'submitBtn', 'cancelBtn', 'errorBox', 'loadingIndicator', 'emptyPreview', 'resultImage', 'resultActions', 'downloadBtn',
         'resultMeta', 'spentTimeLabel', 'usedSeedLabel', 'usedServerRow', 'usedServerLabel', 'usedThemeRow', 'usedThemeLabel',
         'usedGroupTagRow', 'usedGroupTagLabel',
-        'groupTag', 'groupTagList',
+        'groupTagSelect', 'newGroupTagInput', 'editGroupTagSaveBtn', 'groupTagSaveStatus', 'groupTagHelpText',
         'translatedPromptRow', 'translatedPromptLabel', 'elapsedTimer', 'saveStatusBar', 'saveStatusText', 'manualSaveBtn',
         'editAlert', 'pageModeBadge'
     );
@@ -1049,6 +1062,11 @@
         }
 
         jhtml.form.fill('#generateForm', fillData);
+
+        if (clearPrompt) {
+            setGroupTagUIValue('');
+            if (groupTagSaveStatus) groupTagSaveStatus.textContent = '';
+        }
     }
 
     function applyParams(p) {
@@ -1063,7 +1081,6 @@
         if (p.prompt !== undefined) fillData.prompt = p.prompt;
         if (p.negative_prompt !== undefined) fillData.negativePrompt = p.negative_prompt;
         if (p.theme !== undefined) fillData.themeSelect = p.theme || 'none';
-        if (p.group_tag !== undefined) fillData.groupTag = p.group_tag || '';
         if (p.prompt_assist !== undefined) fillData.promptAssistCheck = p.prompt_assist;
         if (p.steps !== undefined) fillData.steps = p.steps;
         if (p.cfg_scale !== undefined) fillData.cfgScale = p.cfg_scale;
@@ -1073,6 +1090,10 @@
         jhtml.form.fill('#generateForm', fillData);
         syncResolutionPreset(w, h);
         if (p.theme !== undefined) updateThemeDetails();
+
+        if (p.group_tag !== undefined) {
+            setGroupTagUIValue(p.group_tag || '');
+        }
     }
 
     // 単語・文章翻訳共通関数
@@ -1415,13 +1436,9 @@
                 updateThemeDetails();
             }
 
-            // グループタグ候補（datalist）の構築
-            if (groupTagList && data.groupTags && Array.isArray(data.groupTags)) {
-                groupTagList.innerHTML = data.groupTags.map(gt => {
-                    const tag = gt.group_tag || gt;
-                    const count = gt.count ? ` (${gt.count}枚)` : '';
-                    return jhtml.html`<option value="${tag}">${tag}${count}</option>`;
-                }).join('');
+            // グループタグ候補（select）の構築
+            if (data.groupTags && Array.isArray(data.groupTags)) {
+                updateGroupTagSelectOptions(data.groupTags);
             }
 
             // 新規作成時は常にサーバー設定＋デフォルト設定を初期適用
@@ -1433,6 +1450,176 @@
             console.error('設定ロードエラー:', e);
         }
     }
+
+    let latestGroupTagsList = [];
+
+    function updateGroupTagSelectOptions(groupTags = [], selectedTag = null) {
+        latestGroupTagsList = groupTags.map(gt => {
+            if (typeof gt === 'string') return { name: gt, count: 0 };
+            return { name: gt.group_tag, count: gt.count || 0 };
+        });
+
+        if (!groupTagSelect) return;
+        const targetVal = selectedTag !== null ? selectedTag : (groupTagSelect.value || '');
+        let html = '<option value="">-- 未分類 (グループなし) --</option>';
+        let hasTarget = !targetVal;
+        latestGroupTagsList.forEach(gt => {
+            const countStr = gt.count ? ` (${gt.count}枚)` : '';
+            const isSel = targetVal === gt.name;
+            if (isSel) hasTarget = true;
+            html += `<option value="${gt.name}" ${isSel ? 'selected' : ''}>📁 ${gt.name}${countStr}</option>`;
+        });
+        if (targetVal && !hasTarget) {
+            html += `<option value="${targetVal}" selected>📁 ${targetVal}</option>`;
+        }
+        groupTagSelect.innerHTML = html;
+        groupTagSelect.value = targetVal;
+    }
+
+    function getEffectiveGroupTag() {
+        const newTag = (newGroupTagInput?.value || '').trim();
+        if (newTag) return newTag;
+        return (groupTagSelect?.value || '').trim();
+    }
+
+    function setGroupTagUIValue(tag = '') {
+        const trimmed = (tag || '').trim();
+        if (newGroupTagInput) newGroupTagInput.value = '';
+        if (groupTagSelect) {
+            updateGroupTagSelectOptions(latestGroupTagsList, trimmed);
+        }
+    }
+
+    function updateGroupTagModeUI() {
+        if (currentEditId) {
+            // 編集モード
+            if (editGroupTagSaveBtn) jhtml.show(editGroupTagSaveBtn, 'inline-block');
+            if (groupTagHelpText) {
+                groupTagHelpText.innerHTML = '※ 編集モード: <strong>選択時は即時保存</strong>されます。新規タグを入力した場合は<strong>「保存」ボタン</strong>で確定できます。';
+            }
+        } else {
+            // 新規モード
+            if (editGroupTagSaveBtn) jhtml.hide(editGroupTagSaveBtn);
+            if (groupTagHelpText) {
+                groupTagHelpText.innerHTML = '※ 新規生成: 選択または入力したグループタグは<strong>画像生成後の保存時</strong>に一緒に登録されます。';
+            }
+        }
+    }
+
+    // 編集モードでのグループタグ保存共通処理
+    async function saveImageGroupTagInEditMode(tag, triggerEl) {
+        const editId = currentEditId || (parentIdInput?.value ? parseInt(parentIdInput.value, 10) : null);
+        if (!editId) return false;
+        if (triggerEl) triggerEl.disabled = true;
+        if (groupTagSaveStatus) {
+            groupTagSaveStatus.textContent = '保存中...';
+            groupTagSaveStatus.style.color = '#0284c7';
+        }
+
+        try {
+            const res = await jhtml.api.post('/api/images?action=updateGroupTag', {
+                id: editId,
+                group_tag: tag
+            });
+
+            if (res.success) {
+                if (groupTagSaveStatus) {
+                    groupTagSaveStatus.textContent = '✅ 保存しました';
+                    groupTagSaveStatus.style.color = '#15803d';
+                }
+                showToast(`グループタグを「${tag || '未分類'}」に設定しました`, 'success');
+
+                if (res.groupTags) {
+                    updateGroupTagSelectOptions(res.groupTags, tag);
+                } else {
+                    setGroupTagUIValue(tag);
+                }
+
+                if (usedGroupTagRow && usedGroupTagLabel) {
+                    if (tag) {
+                        usedGroupTagLabel.textContent = tag;
+                        jhtml.show(usedGroupTagRow);
+                    } else {
+                        jhtml.hide(usedGroupTagRow);
+                    }
+                }
+                return true;
+            } else {
+                if (groupTagSaveStatus) {
+                    groupTagSaveStatus.textContent = '❌ 保存失敗';
+                    groupTagSaveStatus.style.color = '#b91c1c';
+                }
+                showToast('グループタグ保存失敗: ' + (res.error || '不明なエラー'), 'error');
+                return false;
+            }
+        } catch (err) {
+            if (groupTagSaveStatus) {
+                groupTagSaveStatus.textContent = '❌ 通信エラー';
+                groupTagSaveStatus.style.color = '#b91c1c';
+            }
+            showToast('通信エラー: ' + err.message, 'error');
+            return false;
+        } finally {
+            if (triggerEl) triggerEl.disabled = false;
+        }
+    }
+
+    // 既存グループSelectBox変更時のハンドラ
+    async function handleGroupTagSelectChange(e) {
+        const selectEl = groupTagSelect || (e ? e.target : null);
+        const selectedTag = (selectEl ? selectEl.value : '').trim();
+        if (newGroupTagInput) newGroupTagInput.value = ''; // 新規入力欄をクリア
+
+        const editId = currentEditId || (parentIdInput?.value ? parseInt(parentIdInput.value, 10) : null);
+        if (editId) {
+            // 編集モード: 選択時に即時保存
+            await saveImageGroupTagInEditMode(selectedTag, selectEl);
+        } else {
+            // 新規作成時: 保存せず、画面上の選択のみ保持
+            if (groupTagSaveStatus) {
+                groupTagSaveStatus.textContent = selectedTag ? `📁 ${selectedTag} を選択中` : '';
+                groupTagSaveStatus.style.color = '#9a3412';
+            }
+        }
+    }
+
+    // 既存グループSelectBoxの変更時 (直接バインド + 委譲の両方で安全に捕捉)
+    jhtml.on('#groupTagSelect', 'change', handleGroupTagSelectChange);
+    jhtml.on(document, 'change', '#groupTagSelect', handleGroupTagSelectChange);
+
+    // 新規グループ入力時の「保存」ボタンハンドラ
+    async function handleNewGroupTagSave(e) {
+        const editId = currentEditId || (parentIdInput?.value ? parseInt(parentIdInput.value, 10) : null);
+        if (!editId) return;
+        const newTag = (newGroupTagInput?.value || '').trim();
+        if (!newTag) {
+            showToast('グループ名を入力してください', 'warning');
+            if (newGroupTagInput) newGroupTagInput.focus();
+            return;
+        }
+        const btn = editGroupTagSaveBtn || (e ? e.target : null);
+        await saveImageGroupTagInEditMode(newTag, btn);
+    }
+
+    // 新規グループ入力時の「保存」ボタン（編集モード時のみ表示）
+    jhtml.on('#editGroupTagSaveBtn', 'click', handleNewGroupTagSave);
+    jhtml.on(document, 'click', '#editGroupTagSaveBtn', handleNewGroupTagSave);
+
+    // 新規グループ入力欄でEnterキー
+    jhtml.on(document, 'keypress', '#newGroupTagInput', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleNewGroupTagSave(e);
+        }
+    });
+
+    // 新規グループ入力欄に入力されたらSelectBox側を解除
+    jhtml.on(document, 'input', '#newGroupTagInput', (e) => {
+        const val = e.target.value.trim();
+        if (val && groupTagSelect) {
+            groupTagSelect.value = '';
+        }
+    });
 
     // サーバー・解像度・テーマのchangeイベントをjhtml.onで登録
     jhtml.on('#sdServerSelect', 'change', () => {
@@ -1459,6 +1646,7 @@
             await window.headerInitPromise;
         }
         await loadConfig();
+        updateGroupTagModeUI();
 
         if (currentEditId) {
             if (pageModeBadge) pageModeBadge.textContent = `画像編集 (元画像 #${currentEditId})`;
@@ -1656,7 +1844,7 @@
         const currentServerId = sdServerSelect?.value || '';
         const currentServer = currentServers.find(s => s.id === currentServerId);
         const currentTheme = meta.theme !== undefined ? meta.theme : (themeSelect?.value || '');
-        const currentGroupTag = (meta.group_tag !== undefined ? meta.group_tag : (groupTagInput?.value || '')).trim();
+        const currentGroupTag = (meta.group_tag !== undefined ? meta.group_tag : getEffectiveGroupTag()).trim();
 
         const payload = {
             id: currentEditId ? parseInt(currentEditId, 10) : null,
@@ -1702,6 +1890,7 @@
                 if (pageModeBadge) pageModeBadge.textContent = `画像編集 (元画像 #${savedId})`;
                 if (editAlert) jhtml.show(editAlert);
                 if (parentIdInput) parentIdInput.value = savedId;
+                updateGroupTagModeUI();
                 
                 if (statusBar) statusBar.className = 'save-status-bar status-saved';
                 if (statusText) statusText.textContent = wasEdit ? '✅ 元画像の上書き保存が完了しました' : '✅ ギャラリーへ新規保存が完了しました';
@@ -1764,7 +1953,7 @@
         const fData = jhtml.form('#generateForm');
         const isAssist = fData.promptAssistCheck ?? true;
         const selectedTheme = fData.themeSelect || '';
-        const groupTag = (fData.groupTag || '').trim();
+        const groupTag = getEffectiveGroupTag();
         const payload = {
             serverId: fData.sdServerSelect || null,
             prompt: prompt,

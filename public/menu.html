@@ -544,13 +544,32 @@
 
         <!-- グループタグ変更フォーム -->
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;">
-            <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
                 <span>🏷️ グループタグ設定:</span>
                 <span id="modalGroupTagStatus" style="color: #15803d; font-weight: normal; font-size: 11px;"></span>
             </div>
-            <div style="display: flex; gap: 6px;">
-                <input type="text" id="modalGroupTagInput" list="groupTagList" value="${group_tag || ''}" placeholder="例: キャラクタA, 風景（空欄で解除）" style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;" />
-                <button type="button" id="modalUpdateGroupTagBtn" data-id="${id}" class="btn btn-secondary btn-xs" style="white-space: nowrap; font-size: 12px; padding: 6px 12px;">変更を保存</button>
+            <!-- 既存グループから選択（選択した時点で即時保存） -->
+            <div style="margin-bottom: 8px;">
+                <label for="modalGroupTagSelect" style="display: block; font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: 600;">既存のグループから選択 (選ぶと即保存):</label>
+                <select id="modalGroupTagSelect" data-id="${id}" style="width: 100%; padding: 6px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
+                    <option value="" ${!group_tag ? 'selected' : ''}>-- 未分類 (グループなし) --</option>
+                    <% if (availableGroupTags && availableGroupTags.length > 0) { %>
+                        <% availableGroupTags.forEach(function(gt) { %>
+                            <option value="${gt.name}" ${gt.name === group_tag ? 'selected' : ''}>📁 ${gt.name}${gt.count ? ' (' + gt.count + '枚)' : ''}</option>
+                        <% }); %>
+                    <% } %>
+                    <% if (group_tag && (!availableGroupTags || !availableGroupTags.some(function(gt){ return gt.name === group_tag; }))) { %>
+                        <option value="${group_tag}" selected>📁 ${group_tag} (現在設定中)</option>
+                    <% } %>
+                </select>
+            </div>
+            <!-- 新しく追加する（入力＋保存ボタン） -->
+            <div>
+                <label for="modalNewGroupTagInput" style="display: block; font-size: 11px; color: #64748b; margin-bottom: 3px; font-weight: 600;">新しくグループを追加して設定:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="modalNewGroupTagInput" placeholder="新しいグループ名を入力" style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;" />
+                    <button type="button" id="modalRegisterGroupTagBtn" data-id="${id}" class="btn btn-secondary btn-xs" style="white-space: nowrap; font-size: 12px; padding: 6px 12px; font-weight: 600;">保存</button>
+                </div>
             </div>
         </div>
 
@@ -642,19 +661,24 @@
     let currentGroupTag = '';
     let currentSortBy = savedSortBy;
 
+    let latestGroupTags = [];
+
     // グループタグ選択肢の動的更新
     function updateGroupTagFilterOptions(groupTags = []) {
+        latestGroupTags = groupTags.map(gt => {
+            if (typeof gt === 'string') return { name: gt, count: 0 };
+            return { name: gt.group_tag, count: gt.count || 0 };
+        });
         if (!groupTagFilterSelect) return;
         const selectedVal = groupTagFilterSelect.value;
         let html = `
             <option value="" ${selectedVal === '' ? 'selected' : ''}>すべてのグループ</option>
             <option value="__empty__" ${selectedVal === '__empty__' ? 'selected' : ''}>未分類のみ</option>
         `;
-        groupTags.forEach(gt => {
-            const tag = gt.group_tag || gt;
+        latestGroupTags.forEach(gt => {
             const countStr = gt.count ? ` (${gt.count}枚)` : '';
-            const isSel = selectedVal === tag ? 'selected' : '';
-            html += `<option value="${tag}" ${isSel}>${tag}${countStr}</option>`;
+            const isSel = selectedVal === gt.name ? 'selected' : '';
+            html += `<option value="${gt.name}" ${isSel}>${gt.name}${countStr}</option>`;
         });
         groupTagFilterSelect.innerHTML = html;
     }
@@ -823,7 +847,10 @@
         if (!item) return;
 
         if (previewModalBox) {
-            await jhtml.renderTo(previewModalBox, 'tpl-preview-modal', item);
+            await jhtml.renderTo(previewModalBox, 'tpl-preview-modal', {
+                ...item,
+                availableGroupTags: latestGroupTags
+            });
         }
         if (previewModal) previewModal.classList.add('open');
     }
@@ -907,16 +934,14 @@
         loadImages(0);
     });
 
-    // プレビューモーダル内でのグループタグ更新
-    jhtml.on('#previewModalBox', 'click', '#modalUpdateGroupTagBtn', async (e, target) => {
-        const id = target.dataset.id;
-        const tagInput = jhtml.$('modalGroupTagInput');
+    // プレビューモーダル内でのグループタグ更新共通処理
+    async function saveImageGroupTag(id, newTag, triggerElement) {
         const statusEl = jhtml.$('modalGroupTagStatus');
-        if (!id || !tagInput) return;
-
-        const newTag = tagInput.value.trim();
-        target.disabled = true;
-        if (statusEl) statusEl.textContent = '保存中...';
+        if (triggerElement) triggerElement.disabled = true;
+        if (statusEl) {
+            statusEl.textContent = '保存中...';
+            statusEl.style.color = '#0284c7';
+        }
 
         try {
             const res = await jhtml.api.post('/api/images?action=updateGroupTag', {
@@ -929,11 +954,12 @@
                     statusEl.textContent = '✅ 保存しました';
                     statusEl.style.color = '#15803d';
                 }
-                showToast(`グループタグを「${newTag || '未分類'}」に更新しました`, 'success');
-                
+                showToast(`グループタグを「${newTag || '未分類'}」に設定しました`, 'success');
+
                 // キャッシュと画面の更新
-                if (loadedItemsMap.has(Number(id))) {
-                    const itm = loadedItemsMap.get(Number(id));
+                const numId = Number(id);
+                if (loadedItemsMap.has(numId)) {
+                    const itm = loadedItemsMap.get(numId);
                     itm.group_tag = newTag;
                     itm.groupTagLabel = newTag;
                 }
@@ -941,12 +967,14 @@
                     updateGroupTagFilterOptions(res.groupTags);
                 }
                 loadImages(currentOffset);
+                return true;
             } else {
                 if (statusEl) {
-                    statusEl.textContent = '❌ 更新失敗';
+                    statusEl.textContent = '❌ 保存失敗';
                     statusEl.style.color = '#b91c1c';
                 }
-                showToast('グループタグ更新失敗: ' + (res.error || '不明なエラー'), 'error');
+                showToast('グループタグ保存失敗: ' + (res.error || '不明なエラー'), 'error');
+                return false;
             }
         } catch (err) {
             if (statusEl) {
@@ -954,8 +982,51 @@
                 statusEl.style.color = '#b91c1c';
             }
             showToast('通信エラー: ' + err.message, 'error');
+            return false;
         } finally {
-            target.disabled = false;
+            if (triggerElement) triggerElement.disabled = false;
+        }
+    }
+
+    // 既存グループ選択時：選択した時点で即時保存
+    jhtml.on('#previewModalBox', 'change', '#modalGroupTagSelect', async (e, target) => {
+        const id = target.dataset.id;
+        if (!id) return;
+        const selectedTag = target.value.trim();
+        await saveImageGroupTag(id, selectedTag, target);
+    });
+
+    // 新規グループ入力時：「登録」ボタンで登録保存
+    jhtml.on('#previewModalBox', 'click', '#modalRegisterGroupTagBtn', async (e, target) => {
+        const id = target.dataset.id;
+        const inputEl = jhtml.$('modalNewGroupTagInput');
+        if (!id || !inputEl) return;
+        const newTag = inputEl.value.trim();
+        if (!newTag) {
+            showToast('グループ名を入力してください', 'warning');
+            inputEl.focus();
+            return;
+        }
+        const ok = await saveImageGroupTag(id, newTag, target);
+        if (ok) {
+            inputEl.value = '';
+            // モーダル内のセレクトも最新状態に再レンダリングして選択状態を反映
+            const item = loadedItemsMap.get(Number(id));
+            if (item && previewModalBox) {
+                await jhtml.renderTo(previewModalBox, 'tpl-preview-modal', {
+                    ...item,
+                    availableGroupTags: latestGroupTags
+                });
+            }
+        }
+    });
+
+    // 新規グループ入力時のEnterキーでも「登録」実行
+    jhtml.on('#previewModalBox', 'keypress', '#modalNewGroupTagInput', (e, target) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const btn = jhtml.$('modalRegisterGroupTagBtn');
+            if (btn) btn.click();
         }
     });
 
