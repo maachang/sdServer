@@ -430,14 +430,12 @@
     let currentProvider = 'local';
 
     // タブ切り替え
-    jhtml.$$('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            jhtml.$$('.tab-btn').forEach(b => b.classList.remove('active'));
-            jhtml.$$('.tab-pane').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            const targetPane = jhtml.$(btn.getAttribute('data-tab'));
-            if (targetPane) targetPane.classList.add('active');
-        });
+    jhtml.on('.tabs', 'click', '.tab-btn', (e, target) => {
+        jhtml.removeClass('.tab-btn', 'active');
+        jhtml.removeClass('.tab-pane', 'active');
+        jhtml.addClass(target, 'active');
+        const targetPane = jhtml.$(target.getAttribute('data-tab'));
+        if (targetPane) jhtml.addClass(targetPane, 'active');
     });
 
     function showAlert(msg, isError = false) {
@@ -497,7 +495,7 @@
     }
 
     async function openDeleteModal({ title, desc, showCacheOption, cacheSizeFormatted, onConfirm }) {
-        deleteModalContainer.innerHTML = await jhtml.render('tpl-delete-modal', {
+        await jhtml.renderTo(deleteModalContainer, 'tpl-delete-modal', {
             title,
             desc,
             showCacheOption: !!showCacheOption,
@@ -918,11 +916,12 @@
 
     addModelForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const modelId = jhtml.$('modelId')?.value.trim();
-        const name = jhtml.$('modelName')?.value.trim();
-        const description = jhtml.$('modelDescription')?.value.trim();
-        const dtype = jhtml.$('modelDtype')?.value;
-        const task = jhtml.$('modelTask')?.value;
+        const fData = jhtml.form('#addModelForm');
+        const modelId = (fData.modelId || '').trim();
+        const name = (fData.modelName || '').trim();
+        const description = (fData.modelDescription || '').trim();
+        const dtype = fData.modelDtype;
+        const task = fData.modelTask;
         if (!modelId) return;
         try {
             const json = await jhtml.api.post('/api/models?action=add', { modelId, name, description, dtype, task });

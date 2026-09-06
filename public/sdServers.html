@@ -856,30 +856,25 @@
     // サーバー保存送信
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const id = serverIdInput.value.trim();
-        const name = serverNameInput.value.trim();
-        const modelType = serverModelTypeSelect.value.trim() || 'sd15';
-        const baseUrl = serverBaseUrlInput.value.trim();
-        const timeoutSec = parseInt(serverTimeoutInput.value, 10) || 600;
-        const description = serverDescInput.value.trim();
+        const fData = jhtml.form('#serverForm');
+        const id = (fData.serverId || '').trim();
+        const name = (fData.serverName || '').trim();
+        const modelType = (fData.serverModelType || '').trim() || 'sd15';
+        const baseUrl = (fData.serverBaseUrl || '').trim();
+        const timeoutSec = fData.serverTimeoutSec || 600;
+        const description = (fData.serverDesc || '').trim();
 
-        let endpoint = endpointSelect.value;
+        let endpoint = fData.serverEndpointSelect;
         if (endpoint === 'custom') {
-            endpoint = endpointCustom.value.trim();
+            endpoint = (fData.serverEndpointCustom || '').trim();
         }
 
-        const defWidth = srvDefWidthInput.value;
-        const defHeight = srvDefHeightInput.value;
-        const defSteps = srvDefStepsInput.value;
-        const defCfg = srvDefCfgInput.value;
-        const defSampler = srvDefSamplerSelect.value;
-
         const serverDefaults = {};
-        if (defWidth) serverDefaults.width = parseInt(defWidth, 10);
-        if (defHeight) serverDefaults.height = parseInt(defHeight, 10);
-        if (defSteps) serverDefaults.steps = parseInt(defSteps, 10);
-        if (defCfg !== '') serverDefaults.cfg_scale = parseFloat(defCfg);
-        if (defSampler) serverDefaults.sampler_name = defSampler;
+        if (fData.srvDefWidth) serverDefaults.width = fData.srvDefWidth;
+        if (fData.srvDefHeight) serverDefaults.height = fData.srvDefHeight;
+        if (fData.srvDefSteps) serverDefaults.steps = fData.srvDefSteps;
+        if (fData.srvDefCfg !== null && fData.srvDefCfg !== '') serverDefaults.cfg_scale = fData.srvDefCfg;
+        if (fData.srvDefSampler) serverDefaults.sampler_name = fData.srvDefSampler;
 
         try {
             const json = await jhtml.api.post('/api/sdServers', {

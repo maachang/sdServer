@@ -654,7 +654,7 @@
                     serverName: item.server_name || item.server_id || '',
                     themeLabel: themeNames[item.theme] || (item.theme && item.theme !== 'none' ? `🎭 ${item.theme}` : ''),
                     timeSec: item.generation_time_ms ? (item.generation_time_ms / 1000).toFixed(1) : '',
-                    dateStr: item.created_at ? new Date(item.created_at).toLocaleString('ja-JP') : ''
+                    dateStr: item.created_at ? jhtml.format.date(item.created_at, 'YYYY/MM/DD HH:mm') : ''
                 };
                 loadedItemsMap.set(item.id, enriched);
                 return jhtml.render('tpl-card', enriched);
@@ -746,7 +746,7 @@
         if (!item) return;
 
         if (previewModalBox) {
-            previewModalBox.innerHTML = await jhtml.render('tpl-preview-modal', item);
+            await jhtml.renderTo(previewModalBox, 'tpl-preview-modal', item);
         }
         if (previewModal) previewModal.classList.add('open');
     }
