@@ -19,14 +19,14 @@
                 toastContainer.id = 'toastContainer';
                 toastContainer.style.cssText = `
                     position: fixed;
-                    top: 20px;
-                    right: 20px;
+                    bottom: 24px;
+                    right: 24px;
                     z-index: 10000;
                     display: flex;
-                    flex-direction: column;
+                    flex-direction: column-reverse;
                     gap: 10px;
                     max-width: 380px;
-                    width: calc(100% - 40px);
+                    width: calc(100% - 48px);
                     pointer-events: none;
                 `;
                 document.body.appendChild(toastContainer);
