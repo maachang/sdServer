@@ -1456,8 +1456,9 @@
     function updateGroupTagSelectOptions(groupTags = [], selectedTag = null) {
         latestGroupTagsList = groupTags.map(gt => {
             if (typeof gt === 'string') return { name: gt, count: 0 };
-            return { name: gt.group_tag, count: gt.count || 0 };
-        });
+            const name = gt.group_tag !== undefined ? gt.group_tag : (gt.name || '');
+            return { name, count: gt.count || 0 };
+        }).filter(gt => gt.name);
 
         if (!groupTagSelect) return;
         const targetVal = selectedTag !== null ? selectedTag : (groupTagSelect.value || '');
