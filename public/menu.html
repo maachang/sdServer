@@ -589,7 +589,7 @@
         'paginationTopInfo', 'paginationTopControls', 'paginationInfo', 'paginationControls',
         'previewModal', 'previewModalBox', 'searchInput', 'searchBtn', 'clearBtn'
     );
-    const savedLimit = parseInt(localStorage.getItem('images_per_page') || perPageSelect?.value, 10) || 20;
+    const savedLimit = jhtml.storage.get('images_per_page', parseInt(perPageSelect?.value, 10) || 20);
     let limit = savedLimit;
     if (perPageSelect) {
         perPageSelect.value = String(limit);
@@ -815,15 +815,15 @@
 
     perPageSelect?.addEventListener('change', (e) => {
         limit = parseInt(e.target.value, 10) || 20;
-        localStorage.setItem('images_per_page', String(limit));
+        jhtml.storage.set('images_per_page', limit);
         loadImages(0);
     });
 
     // 表示サイズ切り替え（大・中・小）
-    let currentCardSize = localStorage.getItem('images_card_size') || 'md';
+    let currentCardSize = jhtml.storage.get('images_card_size', 'md');
     function applyCardSize(size) {
         currentCardSize = size;
-        localStorage.setItem('images_card_size', size);
+        jhtml.storage.set('images_card_size', size);
         if (imageGrid) {
             imageGrid.classList.remove('grid-lg', 'grid-md', 'grid-sm');
             imageGrid.classList.add(`grid-${size}`);
@@ -833,10 +833,8 @@
         });
     }
 
-    jhtml.$$('.view-size-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            applyCardSize(btn.dataset.size);
-        });
+    jhtml.on(document, 'click', '.view-size-btn', (e, target) => {
+        applyCardSize(target.dataset.size);
     });
     applyCardSize(currentCardSize);
 

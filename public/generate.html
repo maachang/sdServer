@@ -748,7 +748,7 @@
     let lastGeneratedData = null; // 最新の生成結果キャッシュ
 
     // 既存の古い一次保存データがあればクリア
-    try { localStorage.removeItem('sdServer_saved_params'); } catch (e) {}
+    jhtml.storage.remove('sdServer_saved_params');
 
     const {
         translationOverlay: overlay, translationOverlayDesc: overlayDesc, saveConfirmModal,
@@ -1330,7 +1330,7 @@
                             desc += (desc ? ' | ' : '') + `📐 固有defaults: ${dList.join(', ')}`;
                         }
                         if (sdServerDesc) sdServerDesc.textContent = desc;
-                        localStorage.setItem('sd_server_id', sel.value);
+                        jhtml.storage.set('sd_server_id', sel.value);
 
                         if (autoApplyDefaults && srv) {
                             applyDefaultParams(false);
@@ -1340,7 +1340,7 @@
 
                 sdServerSelect.addEventListener('change', () => updateServerDetails(true));
 
-                const savedServerId = localStorage.getItem('sd_server_id') || data.activeServer || currentServers[0].id;
+                const savedServerId = jhtml.storage.get('sd_server_id', data.activeServer || currentServers[0].id);
                 if (currentServers.some(s => s.id === savedServerId)) {
                     sdServerSelect.value = savedServerId;
                 } else {

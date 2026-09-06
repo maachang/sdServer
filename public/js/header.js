@@ -22,9 +22,7 @@
      * @param {string} [options.badgeId] - サブタイトルに割り当てるID（例: 'pageModeBadge'）
      */
     async function renderHeader(options = {}) {
-        const target = typeof options.target === 'string'
-            ? document.querySelector(options.target)
-            : (options.target || document.querySelector('header'));
+        const target = jhtml ? jhtml.$(options.target || 'header') : (typeof options.target === 'string' ? document.querySelector(options.target) : (options.target || document.querySelector('header')));
 
         if (!target) return;
 
@@ -84,7 +82,7 @@
 
     // ヘッダー初期化関数
     function initHeader() {
-        const headerEl = document.querySelector('header');
+        const headerEl = jhtml ? jhtml.$('header') : document.querySelector('header');
         if (headerEl) {
             return renderHeader({
                 target: headerEl,

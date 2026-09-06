@@ -504,12 +504,7 @@
 
     function showAlert(msg, isError = false) {
         if (globalAlert) {
-            globalAlert.textContent = msg;
-            globalAlert.className = `alert-box ${isError ? 'alert-error' : 'alert-success'}`;
-            jhtml.show(globalAlert);
-            setTimeout(() => {
-                jhtml.hide(globalAlert);
-            }, 5000);
+            jhtml.alert(globalAlert, msg, { isError, timeout: 5000 });
         }
 
         if (window.showToast) {
@@ -628,7 +623,7 @@
             const json = await jhtml.api.post('/api/sdServers', { action: 'setActive', serverId });
             if (json.success) {
                 showAlert(json.message || 'デフォルトサーバーを変更しました');
-                localStorage.setItem('sd_server_id', serverId);
+                jhtml.storage.set('sd_server_id', serverId);
                 serverConfig = json.data;
                 renderServers();
             } else {

@@ -439,12 +439,10 @@
     });
 
     function showAlert(msg, isError = false) {
-        if (!statusAlert) return;
-        statusAlert.className = `alert-box ${isError ? 'alert-error' : 'alert-success'}`;
-        statusAlert.textContent = msg;
-        jhtml.show(statusAlert);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(() => { jhtml.hide(statusAlert); }, 5000);
+        if (statusAlert) {
+            jhtml.alert(statusAlert, msg, { isError, timeout: 5000 });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         if (window.showToast) {
             window.showToast(msg, isError ? 'error' : 'success');
