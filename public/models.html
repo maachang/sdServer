@@ -932,48 +932,31 @@
     });
 
     // モデル一覧のイベント委譲（モデル切り替え・キャッシュ削除・項目削除）
-    listEl?.addEventListener('click', (e) => {
-        const switchBtn = e.target.closest('[data-action="switch"]');
-        if (switchBtn) {
-            const mid = switchBtn.dataset.modelId;
-            if (mid) switchModel(mid);
-            return;
-        }
-
-        const delCacheBtn = e.target.closest('[data-action="delete-cache"]');
-        if (delCacheBtn) {
-            const mid = delCacheBtn.dataset.modelId;
-            const size = delCacheBtn.dataset.cacheSize;
-            if (mid) deleteCacheOnly(mid, size);
-            return;
-        }
-
-        const delItemBtn = e.target.closest('[data-action="delete-item"]');
-        if (delItemBtn) {
-            const mid = delItemBtn.dataset.modelId;
-            const isCached = delItemBtn.dataset.cached === 'true';
-            const size = delItemBtn.dataset.cacheSize;
-            if (mid) deleteModelItem(mid, isCached, size);
-            return;
-        }
+    jhtml.on('#modelList', 'click', '[data-action="switch"]', (e, target) => {
+        const mid = target.dataset.modelId;
+        if (mid) switchModel(mid);
+    });
+    jhtml.on('#modelList', 'click', '[data-action="delete-cache"]', (e, target) => {
+        const mid = target.dataset.modelId;
+        const size = target.dataset.cacheSize;
+        if (mid) deleteCacheOnly(mid, size);
+    });
+    jhtml.on('#modelList', 'click', '[data-action="delete-item"]', (e, target) => {
+        const mid = target.dataset.modelId;
+        const isCached = target.dataset.cached === 'true';
+        const size = target.dataset.cacheSize;
+        if (mid) deleteModelItem(mid, isCached, size);
     });
 
     // 孤立キャッシュ一覧のイベント委譲（再追加・完全消去）
-    orphanList?.addEventListener('click', (e) => {
-        const restoreBtn = e.target.closest('[data-action="restore-orphan"]');
-        if (restoreBtn) {
-            const mid = restoreBtn.dataset.modelId;
-            if (mid) restoreOrphanModel(mid);
-            return;
-        }
-
-        const delOrphanBtn = e.target.closest('[data-action="delete-orphan"]');
-        if (delOrphanBtn) {
-            const mid = delOrphanBtn.dataset.modelId;
-            const size = delOrphanBtn.dataset.cacheSize;
-            if (mid) deleteOrphanCache(mid, size);
-            return;
-        }
+    jhtml.on('#orphanList', 'click', '[data-action="restore-orphan"]', (e, target) => {
+        const mid = target.dataset.modelId;
+        if (mid) restoreOrphanModel(mid);
+    });
+    jhtml.on('#orphanList', 'click', '[data-action="delete-orphan"]', (e, target) => {
+        const mid = target.dataset.modelId;
+        const size = target.dataset.cacheSize;
+        if (mid) deleteOrphanCache(mid, size);
     });
 
     globalRefreshBtn?.addEventListener('click', loadModels);

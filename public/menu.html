@@ -773,34 +773,26 @@
     });
 
     // グリッド内のイベント委譲（画像プレビュー・削除）
-    jhtml.on('#imageGrid', 'click', (e) => {
-        const previewEl = e.target.closest('[data-action="preview"]');
-        if (previewEl) {
-            const card = previewEl.closest('.card');
-            const id = card ? card.dataset.id : null;
-            if (id) openModal(id);
-            return;
-        }
-
-        const deleteBtn = e.target.closest('[data-action="delete"]');
-        if (deleteBtn) {
-            const id = deleteBtn.dataset.id;
-            if (id) deleteImage(id);
-            return;
-        }
+    jhtml.on('#imageGrid', 'click', '[data-action="preview"]', (e, target) => {
+        const card = target.closest('.card');
+        const id = card ? card.dataset.id : null;
+        if (id) openModal(id);
+    });
+    jhtml.on('#imageGrid', 'click', '[data-action="delete"]', (e, target) => {
+        const id = target.dataset.id;
+        if (id) deleteImage(id);
     });
 
     // ページネーションのイベント委譲
-    function handlePaginationClick(e) {
-        const btn = e.target.closest('button[data-page]');
-        if (!btn || btn.disabled) return;
-        const page = parseInt(btn.dataset.page, 10);
+    function handlePaginationClick(e, target) {
+        if (!target || target.disabled) return;
+        const page = parseInt(target.dataset.page, 10);
         if (page && !isNaN(page)) {
             goToPage(page);
         }
     }
-    paginationTopControls?.addEventListener('click', handlePaginationClick);
-    paginationControls?.addEventListener('click', handlePaginationClick);
+    jhtml.on('#paginationTopControls', 'click', 'button[data-page]', handlePaginationClick);
+    jhtml.on('#paginationControls', 'click', 'button[data-page]', handlePaginationClick);
 
     // 検索イベント設定
     function performSearch() {
