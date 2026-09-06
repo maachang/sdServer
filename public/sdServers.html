@@ -801,12 +801,12 @@
         jhtml.hide(modal);
     }
 
-    modalCloseBtn?.addEventListener('click', closeModal);
-    modalCancelBtn?.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
+    jhtml.on('#modalCloseBtn', 'click', closeModal);
+    jhtml.on('#modalCancelBtn', 'click', closeModal);
+    jhtml.on('#serverModal', 'click', (e) => {
         if (e.target === modal) closeModal();
     });
-    window.addEventListener('keydown', (e) => {
+    jhtml.on(window, 'keydown', (e) => {
         if (e.key === 'Escape' && modal.style.display === 'flex') {
             closeModal();
         }

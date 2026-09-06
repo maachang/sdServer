@@ -758,15 +758,13 @@
     }
 
     // プレビューモーダルのイベント（背景クリック・閉じるボタン・Escapeキー）
-    if (previewModal) {
-        previewModal.addEventListener('click', (e) => {
-            if (e.target === previewModal || e.target.closest('[data-action="close-modal"]')) {
-                closeModal();
-            }
-        });
-    }
+    jhtml.on('#previewModal', 'click', (e) => {
+        if (e.target === previewModal || e.target.closest('[data-action="close-modal"]')) {
+            closeModal();
+        }
+    });
 
-    window.addEventListener('keydown', (e) => {
+    jhtml.on(window, 'keydown', (e) => {
         if (e.key === 'Escape' && previewModal && previewModal.classList.contains('open')) {
             closeModal();
         }
@@ -801,19 +799,19 @@
         loadImages(0);
     }
 
-    searchBtn?.addEventListener('click', performSearch);
-    searchInput?.addEventListener('keypress', (e) => {
+    jhtml.on('#searchBtn', 'click', performSearch);
+    jhtml.on('#searchInput', 'keypress', (e) => {
         if (e.key === 'Enter') performSearch();
     });
 
-    clearBtn?.addEventListener('click', () => {
+    jhtml.on('#clearBtn', 'click', () => {
         if (searchInput) searchInput.value = '';
         currentKeyword = '';
         if (clearBtn) clearBtn.style.display = 'none';
         loadImages(0);
     });
 
-    perPageSelect?.addEventListener('change', (e) => {
+    jhtml.on('#perPageSelect', 'change', (e) => {
         limit = parseInt(e.target.value, 10) || 20;
         jhtml.storage.set('images_per_page', limit);
         loadImages(0);

@@ -818,7 +818,7 @@
         const saveBtnText = currentEditId ? '💾 上書き保存する' : '💾 保存する';
 
         if (saveConfirmModal) {
-            saveConfirmModal.innerHTML = await jhtml.render('tpl-save-confirm', {
+            await jhtml.renderTo(saveConfirmModal, 'tpl-save-confirm', {
                 title,
                 desc,
                 dataUrl,
@@ -934,7 +934,7 @@
             bestFor: '様々なシチュエーションで利用可能です。'
         };
 
-        themeInfoModal.innerHTML = await jhtml.render('tpl-theme-info-modal', {
+        await jhtml.renderTo(themeInfoModal, 'tpl-theme-info-modal', {
             currentTheme: t,
             details,
             themes: availableThemes
@@ -1124,7 +1124,7 @@
                     notice.style.background = '#fdf4ff';
                     notice.style.border = '1px solid #f0abfc';
                     notice.style.color = '#86198f';
-                    notice.innerHTML = await jhtml.render('tpl-assist-notice', {
+                    await jhtml.renderTo(notice, 'tpl-assist-notice', {
                         modelTypeLabel,
                         optimizedPrompt,
                         optimizedNeg
@@ -1187,7 +1187,7 @@
                 notice.style.background = '#f0fdf4';
                 notice.style.border = '1px solid #bbf7d0';
                 notice.style.color = '#166534';
-                notice.innerHTML = await jhtml.render('tpl-trans-notice', {
+                await jhtml.renderTo(notice, 'tpl-trans-notice', {
                     title: '英訳プレビュー',
                     closeBtnId: 'closePromptTransBtn',
                     applyBtnId: 'applyTransPromptBtn',
@@ -1229,7 +1229,7 @@
                 notice.style.background = '#f0fdf4';
                 notice.style.border = '1px solid #bbf7d0';
                 notice.style.color = '#166534';
-                notice.innerHTML = await jhtml.render('tpl-trans-notice', {
+                await jhtml.renderTo(notice, 'tpl-trans-notice', {
                     title: 'ネガティブ英訳プレビュー',
                     closeBtnId: 'closeNegTransBtn',
                     applyBtnId: 'applyTransNegBtn',
@@ -1304,7 +1304,7 @@
                         description: s.description || ''
                     };
                 });
-                sdServerSelect.innerHTML = await jhtml.render('tpl-server-options', { servers: serverList });
+                await jhtml.renderTo(sdServerSelect, 'tpl-server-options', { servers: serverList });
 
                 const updateServerDetails = (autoApplyDefaults = false) => {
                     const sel = sdServerSelect.options[sdServerSelect.selectedIndex];
@@ -1355,7 +1355,7 @@
 
             // 解像度プリセット生成
             if (opts.resolutions && Array.isArray(opts.resolutions) && resSelect) {
-                resSelect.innerHTML = await jhtml.render('tpl-resolution-options', { resolutions: opts.resolutions });
+                await jhtml.renderTo(resSelect, 'tpl-resolution-options', { resolutions: opts.resolutions });
 
                 resSelect.addEventListener('change', (e) => {
                     if (e.target.value === 'custom') return;
@@ -1369,7 +1369,7 @@
 
             // サンプラー生成
             if (opts.samplers && Array.isArray(opts.samplers) && samplerSelect) {
-                samplerSelect.innerHTML = await jhtml.render('tpl-sampler-options', { samplers: opts.samplers });
+                await jhtml.renderTo(samplerSelect, 'tpl-sampler-options', { samplers: opts.samplers });
                 if (defs.sampler_name) {
                     samplerSelect.value = defs.sampler_name;
                 }
@@ -1406,7 +1406,7 @@
             }
 
             if (themeSelect) {
-                themeSelect.innerHTML = await jhtml.render('tpl-theme-options', { themes: availableThemes });
+                await jhtml.renderTo(themeSelect, 'tpl-theme-options', { themes: availableThemes });
                 themeSelect.addEventListener('change', updateThemeDetails);
                 updateThemeDetails();
             }
@@ -1723,22 +1723,23 @@
             if (elapsedTimer) elapsedTimer.textContent = `${elapsed}s`;
         }, 100);
 
-        const isAssist = promptAssistCheck?.checked ?? true;
-        const selectedTheme = themeSelect?.value || '';
+        const fData = jhtml.form('#generateForm');
+        const isAssist = fData.promptAssistCheck ?? true;
+        const selectedTheme = fData.themeSelect || '';
         const payload = {
-            serverId: sdServerSelect?.value || null,
+            serverId: fData.sdServerSelect || null,
             prompt: prompt,
-            negative_prompt: negativePromptInput?.value.trim() || '',
+            negative_prompt: (fData.negativePrompt || '').trim(),
             promptMode: isAssist ? 'assist' : 'direct',
             promptAssist: isAssist,
             theme: selectedTheme,
-            width: parseInt(widthInput?.value || 512, 10),
-            height: parseInt(heightInput?.value || 512, 10),
-            steps: parseInt(stepsInput?.value || 20, 10),
-            cfg_scale: parseFloat(cfgScaleInput?.value || 7.0),
-            seed: parseInt(seedInput?.value || -1, 10),
-            sampler_name: samplerSelect?.value || 'euler_a',
-            parent_id: parentIdInput?.value ? parseInt(parentIdInput.value, 10) : null,
+            width: fData.width || 512,
+            height: fData.height || 512,
+            steps: fData.steps || 20,
+            cfg_scale: fData.cfgScale !== null && fData.cfgScale !== undefined ? fData.cfgScale : 7.0,
+            seed: fData.seed !== null && fData.seed !== undefined ? fData.seed : -1,
+            sampler_name: fData.sampler || 'euler_a',
+            parent_id: fData.parentId ? parseInt(fData.parentId, 10) : null,
             autoSave: false
         };
 
