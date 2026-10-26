@@ -15,14 +15,16 @@
       }
     },
     {
-      "id": "server-0398",
-      "name": "z-image(229)",
-      "modelType": "sd15",
-      "baseUrl": "http://192.168.0.229:8080",
+      "id": "server-1310",
+      "name": "gpt2.1 turbo(233)",
+      "modelType": "natural",
+      "baseUrl": "http://192.168.0.233:8080",
       "endpoint": "/sdapi/v1/txt2img",
       "timeoutMs": 600000,
-      "description": "",
+      "description": "gpt2.1",
       "defaults": {
+        "width": 512,
+        "height": 512,
         "steps": 8,
         "cfg_scale": 1
       }

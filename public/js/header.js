@@ -14,6 +14,26 @@
     ];
 
     /**
+     * 一覧へ戻るリンクの href を取得（編集モード時は直前のページ・パラメータを維持）
+     */
+    function getMenuHref(currentPage) {
+        if (currentPage === 'generate') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isEdit = urlParams.has('id') && urlParams.get('mode') !== 'new';
+            if (isEdit) {
+                const returnPage = urlParams.get('return_page');
+                const returnOffset = urlParams.get('return_offset');
+                const params = new URLSearchParams();
+                if (returnPage) params.set('page', returnPage);
+                if (returnOffset) params.set('offset', returnOffset);
+                const q = params.toString();
+                return q ? `/menu.html?${q}` : '/menu.html';
+            }
+        }
+        return '/menu.html';
+    }
+
+    /**
      * 共通ヘッダーをレンダリングする
      * @param {Object} options
      * @param {string|Element} [options.target='header'] - マウント先セレクタまたはElement
@@ -47,15 +67,21 @@
 
         // 表示するナビゲーションアクションを構築
         // menu.htmlでは「一覧へ戻る」は不要
+        const menuHref = getMenuHref(currentPage);
         const actions = NAV_ITEMS.filter(item => {
             if (currentPage === 'menu' && item.key === 'menu') return false;
             return true;
+        }).map(item => {
+            if (item.key === 'menu') {
+                return { ...item, href: menuHref };
+            }
+            return item;
         });
 
         // JHTML テンプレート
         const tpl = `
             <div class="header-title">
-                <a href="/menu.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 4px;">
+                <a href="${menuHref}" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 4px;">
                     <span>🎨 sdServer</span>
                 </a>
                 <span <% if (badgeId) { %>id="\${badgeId}"<% } %> style="font-size: 13px; font-weight: normal; color: #6b7280; margin-left: 8px;">\${subTitle}</span>

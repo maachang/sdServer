@@ -574,7 +574,7 @@
         </div>
 
         <div style="margin-top: auto; display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
-            <a href="/generate.html?id=${id}" class="btn btn-primary" style="flex: 1; text-align: center;">✏️ この設定で生成画面を開く</a>
+            <a href="/generate.html?id=${id}&return_page=<%= Math.floor(currentOffset / limit) + 1 %>&return_offset=${currentOffset}" class="btn btn-primary" style="flex: 1; text-align: center;">✏️ この設定で生成画面を開く</a>
             <a href="${image_path}" download="generated_${id}.png" class="btn btn-secondary" style="text-align: center;">💾 ファイル保存</a>
         </div>
     </div>
@@ -610,7 +610,7 @@
                 <span class="badge">${dateStr}</span>
             </div>
             <div class="card-actions">
-                <a href="/generate.html?id=${id}" class="btn btn-secondary btn-sm" style="flex:1;">✏️ 編集</a>
+                <a href="/generate.html?id=${id}&return_page=<%= Math.floor(currentOffset / limit) + 1 %>&return_offset=${currentOffset}" class="btn btn-secondary btn-sm" style="flex:1;">✏️ 編集</a>
                 <button type="button" class="btn btn-danger btn-sm" data-action="delete" data-id="${id}">🗑️ 削除</button>
             </div>
         </div>
@@ -822,6 +822,16 @@
     function goToPage(page) {
         const newOffset = (page - 1) * limit;
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        // URLパラメータを同期（ブラウザの戻る/進むやリロードに対応）
+        const url = new URL(window.location.href);
+        if (page > 1) {
+            url.searchParams.set('page', page);
+            url.searchParams.set('offset', newOffset);
+        } else {
+            url.searchParams.delete('page');
+            url.searchParams.delete('offset');
+        }
+        window.history.pushState(null, '', url.toString());
         loadImages(newOffset);
     }
 
@@ -897,8 +907,18 @@
     jhtml.on('#paginationTopControls', 'click', 'button[data-page]', handlePaginationClick);
     jhtml.on('#paginationControls', 'click', 'button[data-page]', handlePaginationClick);
 
+    function resetPageUrl() {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('page') || url.searchParams.has('offset')) {
+            url.searchParams.delete('page');
+            url.searchParams.delete('offset');
+            window.history.replaceState(null, '', url.toString());
+        }
+    }
+
     // 検索イベント設定
     function performSearch() {
+        resetPageUrl();
         currentKeyword = searchInput?.value.trim() || '';
         if (clearBtn) clearBtn.style.display = currentKeyword ? 'inline-flex' : 'none';
         loadImages(0);
@@ -910,6 +930,7 @@
     });
 
     jhtml.on('#clearBtn', 'click', () => {
+        resetPageUrl();
         if (searchInput) searchInput.value = '';
         currentKeyword = '';
         if (clearBtn) clearBtn.style.display = 'none';
@@ -917,6 +938,7 @@
     });
 
     jhtml.on('#perPageSelect', 'change', (e) => {
+        resetPageUrl();
         limit = parseInt(e.target.value, 10) || 20;
         jhtml.storage.set('images_per_page', limit);
         loadImages(0);
@@ -924,6 +946,7 @@
 
     // 並び替え順の変更
     jhtml.on('#sortBySelect', 'change', (e) => {
+        resetPageUrl();
         currentSortBy = e.target.value;
         jhtml.storage.set('images_sort_by', currentSortBy);
         loadImages(0);
@@ -931,6 +954,7 @@
 
     // グループタグ絞り込み変更
     jhtml.on('#groupTagFilterSelect', 'change', (e) => {
+        resetPageUrl();
         currentGroupTag = e.target.value;
         loadImages(0);
     });
@@ -1050,8 +1074,31 @@
     });
     applyCardSize(currentCardSize);
 
-    // 初回読み込み
-    loadImages(0);
+    // ブラウザの「戻る」「進む」履歴変更に対応
+    window.addEventListener('popstate', () => {
+        const p = new URLSearchParams(window.location.search);
+        let off = 0;
+        if (p.has('offset')) {
+            off = parseInt(p.get('offset'), 10) || 0;
+        } else if (p.has('page')) {
+            const pageNum = parseInt(p.get('page'), 10) || 1;
+            off = Math.max(0, (pageNum - 1) * limit);
+        }
+        if (off !== currentOffset) {
+            loadImages(off);
+        }
+    });
+
+    // 初回読み込み（URLパラメータ ?page= または ?offset= があれば復元、なければ 0）
+    const initialParams = new URLSearchParams(window.location.search);
+    let initialOffset = 0;
+    if (initialParams.has('offset')) {
+        initialOffset = parseInt(initialParams.get('offset'), 10) || 0;
+    } else if (initialParams.has('page')) {
+        const p = parseInt(initialParams.get('page'), 10) || 1;
+        initialOffset = Math.max(0, (p - 1) * limit);
+    }
+    loadImages(initialOffset);
 </script>
 
 </body>
