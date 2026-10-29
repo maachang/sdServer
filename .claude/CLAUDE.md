@@ -339,9 +339,13 @@ maachang の `*.mt.js` / `*.mt.html` (JHTML) / `filter.mt.js` 内では以下の
 | `GET` | `/api/models` | LLM モデル一覧・進捗取得 | なし |
 | `POST` | `/api/models` | LLM 切替・追加・キャッシュ削除 | `{ action: "load"|"add"|"delete"|"deleteCache", modelId }` |
 | `GET` | `/api/images` | 画像履歴一覧・検索取得 | `?limit=20&offset=0&keyword=xxx` |
+| `GET` | `/api/image` | 単一画像の詳細取得 | `?id=123` |
+| `GET` | `/api/imageFile` | ID 指定で画像バイナリ（PNG）を取得。ID は上書き保存しても不変で、ファイル名（URL）が変わっても常に最新を返す（`Cache-Control: no-cache`） | `?id=123` |
 | `POST` | `/api/save` | 一時生成画像の永続保存 | `{ base64Data, prompt, negative_prompt, theme, seed, ... }` |
 | `POST` | `/api/delete` | 画像と DB レコードの完全削除 | `{ id }` |
 | `POST` | `/api/cutout` | 背景の透過（AI 切り抜き。プレビュー用で保存しない） | `{ base64Data }` または `{ id }` |
+
+> 画像を返す API（`/api/images` / `/api/image` / `/api/save`）の各レコードには `image_updated_at`（画像ファイル自体の最終更新時刻・ISO 8601 UTC。ファイルが無い場合は `null`）が付く。DB の `updated_at` はメタ情報の編集でも変わるため、画像の差し替え検知には `image_updated_at` を使う。
 
 ---
 
