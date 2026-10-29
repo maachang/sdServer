@@ -412,6 +412,17 @@
                 <div id="themeDesc" style="font-size: 11px; color: #64748b; margin-top: 4px;"></div>
             </div>
 
+            <!-- クリーン出力（白単色背景・影や特殊効果なし） -->
+            <div class="form-group" style="background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;">
+                <label for="cleanOutputCheck" style="display: flex; align-items: center; font-weight: 600; color: #86198f; margin-bottom: 0; cursor: pointer;">
+                    <input type="checkbox" id="cleanOutputCheck" style="margin-right: 8px; width: 16px; height: 16px; accent-color: #c026d3; cursor: pointer;">
+                    ⬜ クリーン出力 (白単色背景・落ち影や特殊効果なし)
+                </label>
+                <div style="font-size: 11px; color: #86198f; margin-top: 4px; line-height: 1.4;">
+                    ※ 背景を単色の白に統一し、落ち影・モヤ・発光などの特殊効果を抑えます（被写体自身の陰影・立体感は残します）。背景透過ができない画像生成AI向けに、後で切り抜きしやすくするための設定です。テーマの落ち影・効果系の語は自動で除外されます。
+                </div>
+            </div>
+
             <!-- グループタグ（フォルダ・カテゴリ分類） -->
             <div class="form-group" style="background: #fdfaf6; border: 1px solid #fed7aa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;">
                 <div class="label-row" style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
@@ -519,9 +530,28 @@
     </div>
 
     <!-- 右ペイン: プレビュー & 結果 -->
-    <div class="card right-pane-card" style="display: flex; flex-direction: column; align-self: flex-start; position: sticky; top: 16px;">
+    <div class="right-col" style="min-width: 0;">
+        <!-- 結果ツールバー（ダウンロード・透過ボタンと保存状態）
+             右カラム全体の高さの中で画面上部に固定する。カードは長くなるとページ末尾で固定が外れてボタンが画面外へ出るため、カードとは別に固定する -->
+        <div id="resultToolbar" style="position: sticky; top: 70px; z-index: 20; background: #f4f6f9;">
+            <!-- ダウンロード・透過ボタン -->
+                <div id="resultActions" style="display: none; gap: 12px;">
+                <button type="button" id="keyBtn" class="btn btn-primary" style="flex: 1; display: none;" title="背景を切り抜いて透明にした結果を確認します">✂️ 背景を透過する</button>
+                <button type="button" id="keyOkBtn" class="btn btn-success" style="flex: 1; display: none;" title="透過した画像を保存します">✅ OK（透過版を保存）</button>
+                <button type="button" id="unkeyBtn" class="btn btn-secondary" style="flex: 1; display: none;" title="透過前の画像に戻します">✖ キャンセル（透過前に戻す）</button>
+                <a id="downloadBtn" href="" download="generated.png" class="btn btn-secondary" style="flex: 1;">⬇️ ダウンロード</a>
+            </div>
+
+            <!-- 保存状態インジケータ -->
+                <div id="saveStatusBar" class="save-status-bar" style="display: none;">
+                <span id="saveStatusText">💾 ギャラリーに保存済み</span>
+                <button type="button" id="manualSaveBtn" class="btn btn-success btn-xs" style="display: none;">💾 今すぐ保存する</button>
+            </div>
+        </div>
+
+        <div class="card right-pane-card" style="display: flex; flex-direction: column; margin-top: 12px; position: sticky; top: calc(70px + var(--toolbar-h, 0px) + 12px);">
         <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #374151;">生成結果プレビュー</h3>
-        
+
         <div id="previewPane" class="preview-pane">
             <div id="emptyPreview" class="placeholder-text" style="margin: auto 0; padding: 24px 0;">
                 <div style="font-size: 40px; margin-bottom: 8px;">🖼️</div>
@@ -536,13 +566,7 @@
                 <p style="font-size: 12px; color: #6b7280; margin: 0;">※ stable-diffusion.cpp 処理中 (途中で中断可能)</p>
             </div>
 
-            <img id="resultImage" src="" alt="生成画像" style="display: none; width: 100%;" />
-        </div>
-
-        <!-- 保存状態インジケータ -->
-        <div id="saveStatusBar" class="save-status-bar" style="display: none;">
-            <span id="saveStatusText">💾 ギャラリーに保存済み</span>
-            <button type="button" id="manualSaveBtn" class="btn btn-success btn-xs" style="display: none;">💾 今すぐ保存する</button>
+            <img id="resultImage" src="" alt="生成画像" style="display: none; width: 100%; background: repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;" />
         </div>
 
         <div id="resultMeta" class="result-meta">
@@ -555,10 +579,7 @@
                 🌐 <strong>英訳プロンプト:</strong> <span id="translatedPromptLabel" style="color: #1e40af;">-</span>
             </div>
         </div>
-
-        <div id="resultActions" style="margin-top: 16px; display: none; gap: 12px;">
-            <a id="downloadBtn" href="" download="generated.png" class="btn btn-secondary" style="flex: 1;">⬇️ ダウンロード</a>
-        </div>
+    </div>
     </div>
 </div>
 
@@ -774,6 +795,14 @@
     ];
     let lastGeneratedData = null; // 最新の生成結果キャッシュ
 
+    // 結果ツールバー（ボタン・保存状態）の高さに合わせて、プレビューカードの固定位置を下げる（重ならないように）
+    const resultToolbarEl = jhtml.$('resultToolbar');
+    if (resultToolbarEl && typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => {
+            document.documentElement.style.setProperty('--toolbar-h', resultToolbarEl.offsetHeight + 'px');
+        }).observe(resultToolbarEl);
+    }
+
     // 既存の古い一次保存データがあればクリア
     jhtml.storage.remove('sdServer_saved_params');
 
@@ -784,14 +813,14 @@
         sdServerGroup, sdServerSelect, sdServerEndpointBadge, sdServerDesc,
         resolutionPreset: resSelect, sampler: samplerSelect,
         width: widthInput, height: heightInput, steps: stepsInput, cfgScale: cfgScaleInput, seed: seedInput,
-        prompt: promptInput, negativePrompt: negativePromptInput, promptAssistCheck, parentId: parentIdInput,
+        prompt: promptInput, negativePrompt: negativePromptInput, promptAssistCheck, cleanOutputCheck, parentId: parentIdInput,
         assistPromptBtn, promptTransNotice, negTransNotice, translatePromptBtn, translateNegBtn,
         submitBtn, cancelBtn, errorBox, loadingIndicator, emptyPreview, resultImage, resultActions, downloadBtn,
         resultMeta, spentTimeLabel, usedSeedLabel, usedServerRow, usedServerLabel, usedThemeRow, usedThemeLabel,
         usedGroupTagRow, usedGroupTagLabel,
         groupTagSelect, newGroupTagInput, editGroupTagSaveBtn, groupTagSaveStatus, groupTagHelpText,
         translatedPromptRow, translatedPromptLabel, elapsedTimer, saveStatusBar, saveStatusText, manualSaveBtn,
-        editAlert, pageModeBadge
+        editAlert, pageModeBadge, keyBtn, keyOkBtn, unkeyBtn
     } = jhtml.refs(
         'translationOverlay', 'translationOverlayDesc', 'saveConfirmModal',
         'translationTimer',
@@ -799,14 +828,14 @@
         'sdServerGroup', 'sdServerSelect', 'sdServerEndpointBadge', 'sdServerDesc',
         'resolutionPreset', 'sampler',
         'width', 'height', 'steps', 'cfgScale', 'seed',
-        'prompt', 'negativePrompt', 'promptAssistCheck', 'parentId',
+        'prompt', 'negativePrompt', 'promptAssistCheck', 'cleanOutputCheck', 'parentId',
         'assistPromptBtn', 'promptTransNotice', 'negTransNotice', 'translatePromptBtn', 'translateNegBtn',
         'submitBtn', 'cancelBtn', 'errorBox', 'loadingIndicator', 'emptyPreview', 'resultImage', 'resultActions', 'downloadBtn',
         'resultMeta', 'spentTimeLabel', 'usedSeedLabel', 'usedServerRow', 'usedServerLabel', 'usedThemeRow', 'usedThemeLabel',
         'usedGroupTagRow', 'usedGroupTagLabel',
         'groupTagSelect', 'newGroupTagInput', 'editGroupTagSaveBtn', 'groupTagSaveStatus', 'groupTagHelpText',
         'translatedPromptRow', 'translatedPromptLabel', 'elapsedTimer', 'saveStatusBar', 'saveStatusText', 'manualSaveBtn',
-        'editAlert', 'pageModeBadge'
+        'editAlert', 'pageModeBadge', 'keyBtn', 'keyOkBtn', 'unkeyBtn'
     );
 
     let translationTimerInterval = null;
@@ -866,10 +895,7 @@
     });
     jhtml.on('#saveConfirmModal', 'click', '#confirmDiscardBtn', () => {
         hideSaveModal();
-        if (saveStatusBar) saveStatusBar.className = 'save-status-bar status-unsaved';
-        if (saveStatusText) saveStatusText.textContent = '⚠️ 保存されていません（一時プレビュー表示中）';
-        if (manualSaveBtn) manualSaveBtn.style.display = 'inline-flex';
-        if (saveStatusBar) saveStatusBar.style.display = 'flex';
+        markDisplayedImageUnsaved();
     });
 
     function hideSaveModal() {
@@ -1031,7 +1057,8 @@
                 prompt: '',
                 negativePrompt: '',
                 themeSelect: 'none',
-                promptAssistCheck: true
+                promptAssistCheck: true,
+                cleanOutputCheck: false
             });
             updateThemeDetails();
             jhtml.hide('#promptTransNotice');
@@ -1082,6 +1109,7 @@
         if (p.negative_prompt !== undefined) fillData.negativePrompt = p.negative_prompt;
         if (p.theme !== undefined) fillData.themeSelect = p.theme || 'none';
         if (p.prompt_assist !== undefined) fillData.promptAssistCheck = p.prompt_assist;
+        if (p.clean_output !== undefined) fillData.cleanOutputCheck = !!p.clean_output;
         if (p.steps !== undefined) fillData.steps = p.steps;
         if (p.cfg_scale !== undefined) fillData.cfgScale = p.cfg_scale;
         if (p.seed !== undefined) fillData.seed = p.seed;
@@ -1135,7 +1163,8 @@
                 prompt: text,
                 negative_prompt: negEl ? negEl.value.trim() : '',
                 serverId: selectedServerId,
-                theme: selectedTheme
+                theme: selectedTheme,
+                clean_output: !!cleanOutputCheck?.checked
             });
             if (json.success && json.prompt) {
                 const optimizedPrompt = json.prompt;
@@ -1671,6 +1700,41 @@
                             jhtml.show(resultActions);
                             resultActions.style.display = 'flex';
                         }
+
+                        // 保存済み画像（クリーン出力かどうか・背景色に関係なくすべて）: 「背景を透過する」ボタンを有効化
+                        // ※ 保存時は元画像を上書きするため、プロンプト等は保存済みの値を meta として引き継ぐ
+                        //   （theme / group_tag は編集画面側の現在値を使うため meta には含めない）
+                        {
+                            lastGeneratedData = {
+                                clean_output: !!item.clean_output,
+                                saved: true,
+                                originalSaved: true,
+                                keyed: false,
+                                data: item,
+                                originalImageDataUrl: item.image_path,
+                                originalBase64Data: null,
+                                imageDataUrl: item.image_path,
+                                base64Data: null,
+                                meta: {
+                                    prompt: item.prompt,
+                                    negative_prompt: item.negative_prompt,
+                                    translated_prompt: item.translated_prompt,
+                                    translated_negative_prompt: item.translated_negative_prompt,
+                                    width: item.width,
+                                    height: item.height,
+                                    steps: item.steps,
+                                    cfg_scale: item.cfg_scale,
+                                    seed: item.seed,
+                                    sampler_name: item.sampler_name,
+                                    parent_id: item.parent_id,
+                                    server_id: item.server_id,
+                                    server_name: item.server_name,
+                                    clean_output: !!item.clean_output,
+                                    generation_time_ms: item.generation_time_ms
+                                }
+                            };
+                            updateKeyButtons();
+                        }
                     }
 
                     // 利用サーバー情報の復元
@@ -1865,6 +1929,7 @@
             server_name: meta.server_name || currentServer?.name || '',
             theme: currentTheme,
             group_tag: currentGroupTag,
+            clean_output: meta.clean_output !== undefined ? !!meta.clean_output : !!cleanOutputCheck?.checked,
             generation_time_ms: meta.generation_time_ms
         };
 
@@ -1911,6 +1976,98 @@
         }
     }
 
+    // 表示中の画像が未保存であることを保存ステータスバーに表示
+    function markDisplayedImageUnsaved() {
+        if (saveStatusBar) saveStatusBar.className = 'save-status-bar status-unsaved';
+        const canKey = !!lastGeneratedData?.originalImageDataUrl;
+        const keyedPreview = canKey && !!lastGeneratedData?.keyed;
+        if (saveStatusText) {
+            if (keyedPreview) {
+                saveStatusText.textContent = '✂️ 透過結果のプレビュー中です（OKで透過版を保存 / キャンセルで透過前に戻します）';
+            } else if (canKey) {
+                saveStatusText.textContent = '⚠️ 保存されていません（「背景を透過する」で透過結果を確認できます）';
+            } else {
+                saveStatusText.textContent = '⚠️ 保存されていません（一時プレビュー表示中）';
+            }
+        }
+        // 透過プレビュー中は OK ボタンで保存するため、手動保存ボタンは出さない
+        if (manualSaveBtn) manualSaveBtn.style.display = keyedPreview ? 'none' : 'inline-flex';
+        if (saveStatusBar) saveStatusBar.style.display = 'flex';
+    }
+
+    // 「透過する」「OK」「キャンセル」ボタンの表示切替（生成結果・保存済み画像のすべてで表示）
+    function updateKeyButtons() {
+        const enabled = !!(lastGeneratedData && lastGeneratedData.originalImageDataUrl);
+        const keyed = !!(enabled && lastGeneratedData.keyed);
+        const confirmed = !!(enabled && lastGeneratedData.confirmed);
+        if (keyBtn) keyBtn.style.display = (enabled && !keyed && !confirmed) ? 'inline-flex' : 'none';
+        if (keyOkBtn) keyOkBtn.style.display = (keyed && !confirmed) ? 'inline-flex' : 'none';
+        if (unkeyBtn) unkeyBtn.style.display = (keyed && !confirmed) ? 'inline-flex' : 'none';
+    }
+
+    // 表示中の画像（透過前/透過後）を切り替え、プレビュー・ダウンロード・保存対象に反映
+    function showDisplayedImage(dataUrl, base64Data, keyed) {
+        lastGeneratedData.imageDataUrl = dataUrl;
+        lastGeneratedData.base64Data = base64Data;
+        lastGeneratedData.keyed = keyed;
+        lastGeneratedData.confirmed = false;
+        lastGeneratedData.saved = false;
+        if (resultImage) resultImage.src = dataUrl;
+        if (downloadBtn) downloadBtn.href = dataUrl;
+        updateKeyButtons();
+        markDisplayedImageUnsaved();
+    }
+
+    // 「背景を透過する」: サーバー側（AI 切り抜きモデル scripts/rembg_cutout.py）で透過画像を作成してプレビュー表示（保存はしない）
+    jhtml.on('#keyBtn', 'click', async () => {
+        if (!lastGeneratedData || !lastGeneratedData.originalImageDataUrl) return;
+        const keyBtnLabel = keyBtn.textContent;
+        keyBtn.disabled = true;
+        keyBtn.textContent = '⏳ 透過処理中（約20秒）...';
+        try {
+            // 未保存の生成画像は base64 を送り、保存済み画像（base64 を持たない）は ID を送る
+            const reqBody = lastGeneratedData.originalBase64Data
+                ? { base64Data: lastGeneratedData.originalBase64Data }
+                : { id: parseInt(currentEditId, 10) };
+            const json = await jhtml.api.post('/api/cutout', reqBody);
+            if (!json.success) throw new Error(json.error || '不明なエラー');
+            showDisplayedImage(json.imageDataUrl, json.base64Data, true);
+            showToast('背景を透過しました。OKで保存、キャンセルで透過前に戻せます', 'success');
+        } catch (keyErr) {
+            console.error('Background removal error:', keyErr);
+            showToast('背景の透過処理に失敗しました: ' + keyErr.message, 'error');
+        } finally {
+            keyBtn.disabled = false;
+            keyBtn.textContent = keyBtnLabel;
+        }
+    });
+
+    // OK: 表示中の透過画像を保存（保存済み画像の場合は既存の上書き保存）
+    jhtml.on('#keyOkBtn', 'click', async () => {
+        if (!lastGeneratedData || !lastGeneratedData.keyed) return;
+        keyOkBtn.disabled = true;
+        try {
+            await saveImageToServer();
+            if (lastGeneratedData.saved) {
+                lastGeneratedData.confirmed = true;
+                updateKeyButtons();
+            }
+        } finally {
+            keyOkBtn.disabled = false;
+        }
+    });
+
+    // キャンセル: 透過前の画像に戻す
+    jhtml.on('#unkeyBtn', 'click', () => {
+        if (!lastGeneratedData || !lastGeneratedData.originalImageDataUrl) return;
+        showDisplayedImage(lastGeneratedData.originalImageDataUrl, lastGeneratedData.originalBase64Data, false);
+        // 保存済み画像を開いていた場合、キャンセルは保存済みの状態への復帰（未保存警告は出さない）
+        if (lastGeneratedData.originalSaved) {
+            lastGeneratedData.saved = true;
+            if (saveStatusBar) jhtml.hide(saveStatusBar);
+        }
+    });
+
     // 手動「💾 この画像を保存」ボタン
     jhtml.on('#manualSaveBtn', 'click', async () => {
         await saveImageToServer();
@@ -1941,6 +2098,8 @@
         if (emptyPreview) jhtml.hide(emptyPreview);
         if (resultImage) jhtml.hide(resultImage);
         if (resultActions) jhtml.hide(resultActions);
+        lastGeneratedData = null;
+        updateKeyButtons();
         if (loadingIndicator) jhtml.show(loadingIndicator);
 
         const startTimestamp = Date.now();
@@ -1963,6 +2122,7 @@
             promptAssist: isAssist,
             theme: selectedTheme,
             group_tag: groupTag,
+            clean_output: !!fData.cleanOutputCheck,
             width: fData.width || 512,
             height: fData.height || 512,
             steps: fData.steps || 20,
@@ -2029,9 +2189,13 @@
                     }
 
                     // 成功時
+                    // 透過前の画像を原本として保持（透過ボタンで切り替え）
                     lastGeneratedData = {
                         ...data,
-                        saved: false
+                        saved: false,
+                        keyed: false,
+                        originalBase64Data: data.base64Data,
+                        originalImageDataUrl: data.imageDataUrl || (data.base64Data ? `data:image/png;base64,${data.base64Data}` : '')
                     };
 
                     const finalSec = data.durationSec || ((Date.now() - startTimestamp) / 1000).toFixed(2);
@@ -2085,8 +2249,14 @@
                     }
                     if (resultMeta) jhtml.show(resultMeta);
 
-                    // 保存確認ダイアログの表示
-                    showSaveModal(previewSrc);
+                    updateKeyButtons();
+                    if (data.clean_output) {
+                        // クリーン出力: 透過確認前に保存されないよう保存確認ダイアログは出さず、手動保存に任せる
+                        markDisplayedImageUnsaved();
+                    } else {
+                        // 保存確認ダイアログの表示
+                        showSaveModal(previewSrc);
+                    }
                     return true;
                 } catch (pollErr) {
                     console.error('Polling error:', pollErr);

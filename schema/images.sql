@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS images (
     server_name TEXT DEFAULT '',
     theme TEXT DEFAULT '',
     group_tag TEXT DEFAULT '',
+    clean_output INTEGER DEFAULT 0, -- クリーン出力 (0:オフ / 1:オン マゼンタ単色背景・影や特殊効果なし)
     generation_time_ms INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL

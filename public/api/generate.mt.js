@@ -118,6 +118,7 @@ exports.handler = async function() {
     const userNegativePrompt = params.negative_prompt || '';
     const theme = params.theme || body.theme || body.themeId || '';
     const groupTag = params.group_tag || body.group_tag || body.groupTag || '';
+    const cleanOutput = params.clean_output === true;
 
     // 新規タスクの作成
     const newTaskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -147,7 +148,7 @@ exports.handler = async function() {
             const modelType = targetServer ? (targetServer.modelType || 'sd15') : 'sd15';
             
             if (promptMode === 'assist' && translator && translator.assistPrompt) {
-                const assistResult = await translator.assistPrompt(userPrompt, userNegativePrompt, modelType, theme);
+                const assistResult = await translator.assistPrompt(userPrompt, userNegativePrompt, modelType, theme, cleanOutput);
                 if (assistResult.prompt) {
                     translatedPrompt = assistResult.prompt;
                     effectivePrompt = assistResult.prompt;
@@ -168,7 +169,7 @@ exports.handler = async function() {
                     }
                 }
                 if (theme && translator.applyThemeToPrompt) {
-                    const themed = translator.applyThemeToPrompt(effectivePrompt, effectiveNegativePrompt, theme, modelType);
+                    const themed = translator.applyThemeToPrompt(effectivePrompt, effectiveNegativePrompt, theme, modelType, cleanOutput);
                     effectivePrompt = themed.prompt;
                     effectiveNegativePrompt = themed.negative_prompt;
                     if (translatedPrompt) {
@@ -178,6 +179,15 @@ exports.handler = async function() {
                         translatedNegativePrompt = effectiveNegativePrompt;
                     }
                 }
+            }
+
+            // クリーン出力: アシスト時は translator.assistPrompt 内で適用済みのため、直接生成時のみここで適用
+            if (cleanOutput && promptMode !== 'assist' && translator && translator.applyCleanOutput) {
+                const cleaned = translator.applyCleanOutput(effectivePrompt, effectiveNegativePrompt, modelType, false);
+                effectivePrompt = cleaned.prompt;
+                effectiveNegativePrompt = cleaned.negative_prompt;
+                translatedPrompt = effectivePrompt;
+                translatedNegativePrompt = effectiveNegativePrompt;
             }
 
             const sdParams = {
@@ -213,6 +223,7 @@ exports.handler = async function() {
                     server_name: genResult.serverInfo?.name || '',
                     theme: theme,
                     group_tag: groupTag,
+                    clean_output: cleanOutput,
                     generation_time_ms: durationMs
                 });
                 createdItem = imageModel.getImageById(recordId);
@@ -230,6 +241,7 @@ exports.handler = async function() {
                 durationSec: (durationMs / 1000).toFixed(2),
                 theme: theme,
                 group_tag: groupTag,
+                clean_output: cleanOutput,
                 translated: {
                     prompt: translatedPrompt || null,
                     negative_prompt: translatedNegativePrompt || null
@@ -250,6 +262,7 @@ exports.handler = async function() {
                     server_name: genResult.serverInfo?.name || '',
                     theme: theme,
                     group_tag: groupTag,
+                    clean_output: cleanOutput,
                     generation_time_ms: durationMs
                 }
             };

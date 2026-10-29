@@ -300,6 +300,28 @@ maachang の `*.mt.js` / `*.mt.html` (JHTML) / `filter.mt.js` 内では以下の
 - **編集モード時のサーバー変更制御**: 編集画面で画像生成サーバーを変更した場合は確認ダイアログを表示。「OK」を選択した場合、解像度（幅・高さ）およびプロンプトを維持したまま、対象サーバーの推奨パラメータ（ステップ数、CFGスケール、サンプラー等）のみを安全に置き換える。
 - **上下デュアルページネーション**: 画像一覧画面（`/menu.html`）では上部・下部の両方にページングコントロールが同期表示され、スムーズなブラウジングが可能。
 
+## 7. クリーン出力（白単色背景）と背景の透過
+
+- **目的**: 画像生成 AI は背景透過ができないため、背景を白の単色に統一し、影や特殊効果を抑えて生成する（背景の透過自体は、下記のとおり、AI 切り抜きモデルで行う）。白は学習データに最も多い背景でモデルが確実に従いやすく、無彩色のため色被りも目立たない。
+- **切替**: 生成画面の「🟪 クリーン出力」チェックボックス（`clean_output`）。`images.clean_output` 列に保存され、再編集時に復元される。
+- **プロンプト側 (`lib/translator.js`)**:
+  - `applyCleanOutput()` が固定語を付与（ポジティブ: 均一照明＋白背景指定、ネガティブ: 落ち影・接地影・モヤ・発光・ボケ・白以外の背景色など）。自然言語型は肯定文を追記。
+  - 被写体自身の陰影・立体感（筋肉の凹凸等）は消さない方針のため、素の `shading` / `lighting` は除外対象にしない。落ち影・効果系の語のみ除外（`CLEAN_EFFECT_PATTERN`）。
+  - テーマの `promptPrefix` / `promptSuffix` / `negativePrompt` から効果系タグを除外。AI アシスト出力からは効果系タグと `〜 background` 系タグも除外。
+- **背景の透過（クリーン出力に限らず、すべての画像が対象）**:
+  - 生成画面の「✂️ 背景を透過する」ボタンで、**生成直後の画像と、保存済みの画像（編集画面）のどちらでも**、背景色に関係なく背景を透過できる。
+  - 流れ: 「背景を透過する」→ 透過結果をプレビュー（市松模様）→ **「✅ OK」で透過版を保存、「✖ キャンセル」で透過前に戻る**。保存済み画像の OK は既存の上書き保存（元画像は透過版に置き換わる。キャンセルすれば何も変わらない）。保存・ダウンロードされるのは画面に表示中の画像。
+  - クリーン出力で生成した場合は、保存確認ダイアログを自動表示せず、透過確認後に OK で保存する。
+- **透過処理（サーバー側 / AI 切り抜きモデル BiRefNet）**:
+  - `POST /api/cutout`（`public/api/cutout.mt.js`）が、`lib/cutout.js` 経由で `scripts/rembg_cutout.py`（rembg の `birefnet-general-lite`）を実行して透過 PNG を作る。**保存はせずプレビュー用に返すだけ**（保存は OK ボタンの `/api/save`）。
+  - 入力は `{ base64Data }`（未保存の生成画像）または `{ id }`（保存済み画像）。検証定義は `validates/cutout.js`。
+  - 被写体の形から切り抜くため、背景の色・種類に依存しない。処理後に透明部の RGB を近傍の不透明色で埋める（`scripts/bleed_transparent_rgb.py`）。
+  - すでに透過済みの画像（透明画素が全体の0.5%以上）は、処理すると壊れるため拒否する。同時実行は直列化。
+  - **実行要件**: `scripts/setup_rembg.sh` を実行して、`scripts/rembg_venv`（Python 仮想環境: rembg + onnxruntime、約590MB）と `data/rembg`（モデル約224MB）を用意する。Bun のみで動く他の機能と異なる外部依存。
+  - 処理時間の目安: CPU のみで 512×512 が約27秒（モデル読み込み約8秒＋推論約18秒）。
+  - 試験結果: bokodun 版（マゼンタ背景専用の色判定ツール）は、背景に近い色のハイライトや細い部位が欠けたため、BiRefNet に置き換えた。軽量な `isnet-general-use`（約2秒）は、細い脚や半透明の膜がぼやけたため採用しなかった。
+- **既知の制約**: 影の完全抑制はプロンプトだけでは保証できない。境界の半透明画素には背景の白が混ざるため、暗い背景に重ねると白いフチが見える可能性がある（必要なら境界の色補正を追加する）。マゼンタ背景は、モデルが彩度を守らず（くすんだ赤紫になる）、被写体へ色被りが入ったため採用しなかった。
+
 ---
 
 # REST API エンドポイントリファレンス
@@ -317,6 +339,7 @@ maachang の `*.mt.js` / `*.mt.html` (JHTML) / `filter.mt.js` 内では以下の
 | `GET` | `/api/images` | 画像履歴一覧・検索取得 | `?limit=20&offset=0&keyword=xxx` |
 | `POST` | `/api/save` | 一時生成画像の永続保存 | `{ base64Data, prompt, negative_prompt, theme, seed, ... }` |
 | `POST` | `/api/delete` | 画像と DB レコードの完全削除 | `{ id }` |
+| `POST` | `/api/cutout` | 背景の透過（AI 切り抜き。プレビュー用で保存しない） | `{ base64Data }` または `{ id }` |
 
 ---
 
@@ -330,7 +353,8 @@ maachang の `*.mt.js` / `*.mt.html` (JHTML) / `filter.mt.js` 内では以下の
 | `conf/` | 設定 JSON (`sdServer.json`, `localLlm.json`, `server.json`, `env.json`) |
 | `data/` | SQLite3 DB ファイル (`sdServer.db`, `session.db`) の配置先 |
 | `schema/` | テーブルスキーマ定義 (`images.sql`) の保存・出力先 |
-| `validates/` | バリデーション定義ファイル (`image.js`) の保存・配置先 |
+| `validates/` | バリデーション定義ファイル (`image.js`, `cutout.js`) の保存・配置先 |
+| `scripts/` | 背景透過の Python スクリプト (`rembg_cutout.py`, `bleed_transparent_rgb.py`) とセットアップ (`setup_rembg.sh`)。`rembg_venv/` は Git 管理外 |
 | `log/` | 日別ローテーションログファイルの出力先 |
 | `package.json` | プロジェクト設定・npm scripts |
 | `.claude/CLAUDE.md` | 本ファイル |

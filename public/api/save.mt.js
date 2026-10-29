@@ -45,6 +45,7 @@ exports.handler = async function() {
                 server_name: body.server_name || body.serverName,
                 theme: body.theme !== undefined ? body.theme : '',
                 group_tag: body.group_tag !== undefined ? body.group_tag : (body.groupTag !== undefined ? body.groupTag : ''),
+                clean_output: body.clean_output === true,
                 generation_time_ms: body.generation_time_ms || 0
             });
             recordId = parsedId;
@@ -67,6 +68,7 @@ exports.handler = async function() {
                 server_name: body.server_name || body.serverName,
                 theme: body.theme || '',
                 group_tag: body.group_tag || body.groupTag || '',
+                clean_output: body.clean_output === true,
                 generation_time_ms: body.generation_time_ms || 0
             });
         }

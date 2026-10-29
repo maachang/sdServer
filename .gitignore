@@ -6,3 +6,7 @@ log/
 .claudeWork/
 
 public/uploads/*
+
+# Python スクリプトのバイトコードキャッシュ
+scripts/__pycache__/
+scripts/rembg_venv/

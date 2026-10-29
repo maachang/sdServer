@@ -62,6 +62,11 @@ module.exports = {
         required: false,
         default: ''
     },
+    clean_output: {
+        type: 'boolean',
+        required: false,
+        default: false
+    },
     group_tag: {
         type: 'string',
         required: false,

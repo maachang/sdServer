@@ -15,6 +15,7 @@ exports.handler = async function() {
     const prompt = body.prompt || '';
     const negativePrompt = body.negative_prompt || '';
     const theme = body.theme || body.themeId || '';
+    const cleanOutput = body.clean_output === true;
 
     let modelType = body.modelType;
     if (!modelType && (body.serverId || body.server_id)) {
@@ -36,7 +37,7 @@ exports.handler = async function() {
 
     try {
         if (translator && translator.assistPrompt) {
-            const result = await translator.assistPrompt(prompt, negativePrompt, modelType, theme);
+            const result = await translator.assistPrompt(prompt, negativePrompt, modelType, theme, cleanOutput);
             return {
                 success: true,
                 ...result
