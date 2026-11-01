@@ -1045,10 +1045,19 @@
         }
     });
 
+    // サーバーID（または "group:xxx" のグループ指定）から代表サーバーを取得（グループは先頭メンバー）
+    function findServerOrGroup(id) {
+        if (typeof id === 'string' && id.startsWith('group:')) {
+            const gid = id.slice(6);
+            return currentServers.find(s => s.groupId === gid);
+        }
+        return currentServers.find(s => s.id === id);
+    }
+
     // 選択中サーバーのdefaults（または共通デフォルト）を適用
     function applyDefaultParams(clearPrompt = false) {
         const currentServerId = sdServerSelect?.value;
-        const currentServer = currentServers.find(s => s.id === currentServerId) || currentServers[0];
+        const currentServer = findServerOrGroup(currentServerId) || currentServers[0];
         const srvDefs = currentServer?.defaults || {};
         const defs = serverDefaults || {};
 
@@ -1370,13 +1379,33 @@
                         description: s.description || ''
                     };
                 });
-                await jhtml.renderTo(sdServerSelect, 'tpl-server-options', { servers: serverList });
+                // グループ（同一 groupId のサーバー群）を選択肢の先頭に追加
+                const groupMap = new Map();
+                currentServers.forEach(s => {
+                    if (!s.groupId) return;
+                    if (!groupMap.has(s.groupId)) groupMap.set(s.groupId, []);
+                    groupMap.get(s.groupId).push(s);
+                });
+                const groupList = [];
+                groupMap.forEach((members, gid) => {
+                    const first = members[0];
+                    const mType = first.modelType || 'sd15';
+                    groupList.push({
+                        id: `group:${gid}`,
+                        name: `📦 グループ: ${gid}（${members.length}台・空きサーバーへ自動振り分け）`,
+                        mType,
+                        typeLabel: typeLabels[mType] || `🏷️ ${mType}`,
+                        url: members.map(m => m.baseUrl).join(' , '),
+                        description: `グループ内のサーバー: ${members.map(m => m.name || m.id).join(' / ')}`
+                    });
+                });
+                await jhtml.renderTo(sdServerSelect, 'tpl-server-options', { servers: groupList.concat(serverList) });
 
                 updateServerDetails = (autoApplyDefaults = false) => {
                     const sel = sdServerSelect.options[sdServerSelect.selectedIndex];
                     if (sel) {
                         const srvId = sel.value;
-                        const srv = currentServers.find(s => s.id === srvId);
+                        const srv = findServerOrGroup(srvId);
                         if (sdServerEndpointBadge) sdServerEndpointBadge.textContent = sel.dataset.url || '';
                         
                         let desc = '';
@@ -1405,7 +1434,7 @@
                 };
 
                 const savedServerId = jhtml.storage.get('sd_server_id', data.activeServer || currentServers[0].id);
-                if (currentServers.some(s => s.id === savedServerId)) {
+                if (Array.from(sdServerSelect.options).some(o => o.value === savedServerId)) {
                     sdServerSelect.value = savedServerId;
                 } else {
                     sdServerSelect.value = currentServers[0].id;
@@ -1907,7 +1936,7 @@
 
         const meta = lastGeneratedData.meta || {};
         const currentServerId = sdServerSelect?.value || '';
-        const currentServer = currentServers.find(s => s.id === currentServerId);
+        const currentServer = findServerOrGroup(currentServerId);
         const currentTheme = meta.theme !== undefined ? meta.theme : (themeSelect?.value || '');
         const currentGroupTag = (meta.group_tag !== undefined ? meta.group_tag : getEffectiveGroupTag()).trim();
 
@@ -1925,7 +1954,7 @@
             seed: meta.seed,
             sampler_name: meta.sampler_name,
             parent_id: meta.parent_id,
-            server_id: meta.server_id || currentServerId,
+            server_id: meta.server_id || currentServer?.id || currentServerId,
             server_name: meta.server_name || currentServer?.name || '',
             theme: currentTheme,
             group_tag: currentGroupTag,

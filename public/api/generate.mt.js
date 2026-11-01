@@ -123,7 +123,9 @@ exports.handler = async function() {
     // 新規タスクの作成
     const newTaskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const abortController = new AbortController();
-    const targetServer = sdClient.resolveServer(body.serverId || body.server_id);
+    // グループ指定の場合は、処理中タスク数が最小のサーバーに振り分ける
+    const targetServer = sdClient.pickServer(body.serverId || body.server_id);
+    sdClient.acquireServer(targetServer.id);
 
     const task = {
         id: newTaskId,
@@ -192,7 +194,7 @@ exports.handler = async function() {
 
             const sdParams = {
                 ...params,
-                serverId: body.serverId || body.server_id,
+                serverId: targetServer.id,
                 prompt: effectivePrompt,
                 negative_prompt: effectiveNegativePrompt
             };
@@ -269,6 +271,8 @@ exports.handler = async function() {
         } catch (err) {
             task.status = 'failed';
             task.error = err.message || '画像生成に失敗しました';
+        } finally {
+            sdClient.releaseServer(targetServer.id);
         }
     })();
 

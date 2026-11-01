@@ -260,6 +260,10 @@ maachang の `*.mt.js` / `*.mt.html` (JHTML) / `filter.mt.js` 内では以下の
   - `sd15` (**SD 1.5系**): Danbooruタグ、カンマ区切り単語、品質タグ（`masterpiece, best quality`）、ネガティブタグ（`worst quality, bad anatomy`）。AnyLoRA, Anything, Realistic Vision 等。
   - `sdxl` (**SDXL系**): クオリティスコア（`score_9, score_8_up`）＋ 短いシチュエーション文のハイブリッド。Pony Diffusion XL, Animagine XL 等。
   - `natural` (**自然言語型**): 主語・環境・照明・構図を詳細に記述した自然な英文段落。品質タグやネガティブタグは排除。FLUX, Qwen-Image, SD 3.5, DiT 等。
+- **サーバーのグループ化 (`groupId`)**:
+  - サーバー設定に任意の `groupId` を付けると、同じ `groupId` のサーバー群が生成画面の選択肢に「📦 グループ: xxx（N台）」として現れる（`serverId` は `group:xxx` 形式）。
+  - 生成時は `sdClient.pickServer()` が、処理中タスク数（`acquireServer` / `releaseServer` でプロセス内管理）が最小のサーバーへ振り分け、同数なら最後の割り当てが最も古いものを選ぶ（全台ふさがりなら最小のものへ投入し SD 側キューで待機）。
+  - 同一グループは同一 `modelType` のみ（`saveServer` で検証）。履歴の `server_id` には実際に生成したサーバーを記録。AI アシスト・defaults 参照はグループの先頭メンバーを代表として使う。
 - **パラメータ継承優先度**:
   `リクエスト指定値` > `サーバー個別 defaults` > `共通 defaults` > `ハードコード規定値 (512x512, 20 steps, euler_a)`
 
