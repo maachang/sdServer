@@ -25,6 +25,8 @@ def main():
     parser = argparse.ArgumentParser(description="BiRefNet background removal")
     parser.add_argument("input", help="Path to input image")
     parser.add_argument("-o", "--output", required=True, help="Path to output PNG")
+    parser.add_argument("--pad", type=int, default=0,
+                        help="四方に足す白い余白の幅(px)。被写体が画像の端に接していても切り抜けるようにする（処理後に元の大きさへ戻す）")
     args = parser.parse_args()
 
     src_img = Image.open(args.input)
@@ -38,7 +40,17 @@ def main():
             sys.exit(3)
 
     session = new_session(MODEL_NAME)
-    out = remove(src_img.convert('RGB'), session=session)
+    rgb = src_img.convert('RGB')
+    pad = max(0, args.pad)
+    if pad > 0:
+        # 四方に白の余白を足してから処理する（被写体が画像の端まで続くと、モデルが輪郭を捉えられず誤って透過するため）
+        padded = Image.new('RGB', (rgb.width + pad * 2, rgb.height + pad * 2), (255, 255, 255))
+        padded.paste(rgb, (pad, pad))
+        rgb = padded
+    out = remove(rgb, session=session)
+    if pad > 0:
+        # 足した余白を取り除いて元の大きさに戻す
+        out = out.crop((pad, pad, out.width - pad, out.height - pad))
 
     # 完全透明部の RGB を近傍の不透明色で埋める（縮小時に元の背景色が輪郭へ混ざるのを防ぐ）
     out = Image.fromarray(bleed(np.array(out.convert('RGBA'))))

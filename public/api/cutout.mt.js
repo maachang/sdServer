@@ -1,7 +1,7 @@
 /**
  * 背景の透過 API（AI 切り抜きモデル）
  * POST /api/cutout
- * body: { base64Data: "PNGのbase64" } または { id: 保存済み画像ID }
+ * body: { base64Data: "PNGのbase64", clean_output?: bool } または { id: 保存済み画像ID }
  * 戻り値: { success, base64Data, imageDataUrl }（背景を透過した PNG。保存はしない＝プレビュー用）
  */
 exports.handler = async function() {
@@ -31,6 +31,7 @@ exports.handler = async function() {
 
     try {
         let srcBuffer;
+        let cleanOutput = params.clean_output === true;
         if (params.base64Data) {
             // 未保存の生成画像（data URL 接頭辞が付いていても受け付ける）
             srcBuffer = Buffer.from(params.base64Data.replace(/^data:image\/png;base64,/, ''), 'base64');
@@ -41,6 +42,7 @@ exports.handler = async function() {
                 $response.status(404);
                 return { success: false, error: '画像が見つかりません' };
             }
+            cleanOutput = !!item.clean_output;
             const filePath = path.join(process.cwd(), 'public', 'uploads', path.basename(item.image_path));
             if (!fs.existsSync(filePath)) {
                 $response.status(404);
@@ -52,7 +54,7 @@ exports.handler = async function() {
             return { success: false, error: 'base64Data または id を指定してください' };
         }
 
-        const outBuffer = await cutout.removeBackground(srcBuffer);
+        const outBuffer = await cutout.removeBackground(srcBuffer, cleanOutput);
         const outBase64 = outBuffer.toString('base64');
 
         return {

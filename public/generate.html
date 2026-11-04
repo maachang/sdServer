@@ -2056,7 +2056,7 @@
         try {
             // 未保存の生成画像は base64 を送り、保存済み画像（base64 を持たない）は ID を送る
             const reqBody = lastGeneratedData.originalBase64Data
-                ? { base64Data: lastGeneratedData.originalBase64Data }
+                ? { base64Data: lastGeneratedData.originalBase64Data, clean_output: !!(lastGeneratedData.meta?.clean_output ?? cleanOutputCheck?.checked) }
                 : { id: parseInt(currentEditId, 10) };
             const json = await jhtml.api.post('/api/cutout', reqBody);
             if (!json.success) throw new Error(json.error || '不明なエラー');
