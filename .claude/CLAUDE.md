@@ -322,6 +322,7 @@ maachang の `*.mt.js` / `*.mt.html` (JHTML) / `filter.mt.js` 内では以下の
   - `POST /api/cutout`（`public/api/cutout.mt.js`）が、`lib/cutout.js` 経由で `scripts/rembg_cutout.py`（rembg の `birefnet-general-lite`）を実行して透過 PNG を作る。**保存はせずプレビュー用に返すだけ**（保存は OK ボタンの `/api/save`）。
   - 入力は `{ base64Data }`（未保存の生成画像）または `{ id }`（保存済み画像）。検証定義は `validates/cutout.js`。
   - **クリーン出力の画像は、四方に白い余白（`lib/cutout.js` の `CLEAN_PAD_PX` = 100px）を足してから切り抜き、処理後に元の大きさへ戻す。** 被写体が画像の端まで続く（例: 画面全体を覆う木々）と、モデルが輪郭を捉えられず誤って透過するため。画像230での試験では 10px は不足、40px でも抜けが残り、100px でほぼ解消した。`/api/cutout` は `clean_output`（`id` 指定時は DB の値）で判定する。クリーン出力以外は余白なしの従来処理。
+  - **離れた小さな塊の除去**: 切り抜き結果のうち、最大の塊の面積の10%未満の離れた塊（背景のモヤ等の誤検出。画像222で左端に残った）は透明にする（`scripts/rembg_cutout.py` の `MIN_COMPONENT_RATIO`）。意図して複数の被写体が並ぶ画像では、小さい方が消える場合がある。
   - 被写体の形から切り抜くため、背景の色・種類に依存しない。処理後に透明部の RGB を近傍の不透明色で埋める（`scripts/bleed_transparent_rgb.py`）。
   - すでに透過済みの画像（透明画素が全体の0.5%以上）は、処理すると壊れるため拒否する。同時実行は直列化。
   - **実行要件**: `scripts/setup_rembg.sh` を実行して、`scripts/rembg_venv`（Python 仮想環境: rembg + onnxruntime、約590MB）と `data/rembg`（モデル約224MB）を用意する。Bun のみで動く他の機能と異なる外部依存。

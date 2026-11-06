@@ -15,10 +15,30 @@ import sys
 import argparse
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 from rembg import remove, new_session
 from bleed_transparent_rgb import bleed
 
 MODEL_NAME = 'birefnet-general-lite'
+
+# 最大の塊に対する面積比がこの値未満の、離れた小さな塊はゴミ（背景のモヤ等の誤検出）として透明にする
+MIN_COMPONENT_RATIO = 0.10
+
+
+def remove_small_components(rgba):
+    """アルファの連結成分のうち、最大の塊の MIN_COMPONENT_RATIO 未満の塊を透明にする"""
+    mask = rgba[:, :, 3] > 16
+    labels, n = ndimage.label(mask, structure=np.ones((3, 3)))
+    if n <= 1:
+        return rgba
+    sizes = ndimage.sum(mask, labels, range(1, n + 1))
+    keep = np.concatenate(([False], sizes >= sizes.max() * MIN_COMPONENT_RATIO))
+    # 小さな塊を消す（縁の微弱なアルファも巻き込むため膨張させる。残す塊の画素は除外）
+    mask_keep = keep[labels]
+    drop = ndimage.binary_dilation(mask & ~mask_keep, iterations=2) & ~mask_keep
+    rgba = rgba.copy()
+    rgba[drop, 3] = 0
+    return rgba
 
 
 def main():
@@ -53,7 +73,7 @@ def main():
         out = out.crop((pad, pad, out.width - pad, out.height - pad))
 
     # 完全透明部の RGB を近傍の不透明色で埋める（縮小時に元の背景色が輪郭へ混ざるのを防ぐ）
-    out = Image.fromarray(bleed(np.array(out.convert('RGBA'))))
+    out = Image.fromarray(bleed(remove_small_components(np.array(out.convert('RGBA')))))
     out.save(args.output, format='PNG')
 
 
