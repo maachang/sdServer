@@ -9,7 +9,8 @@ exports.handler = async function() {
     const keyword = $request.getQuery('keyword', '');
     const groupTag = $request.getQuery('groupTag', '');
     const sortBy = $request.getQuery('sortBy', 'created_at');
-    const limit = parseInt($request.getQuery('limit', '20'), 10) || 20;
+    // 1ページの最大件数は 120 件（それ以上の指定は 120 に丸める）
+    const limit = Math.min(Math.max(parseInt($request.getQuery('limit', '20'), 10) || 20, 1), 120);
     const offset = parseInt($request.getQuery('offset', '0'), 10) || 0;
     const action = $request.getQuery('action', '');
 

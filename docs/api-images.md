@@ -32,7 +32,7 @@
 
 ### `GET /api/images` 画像の一覧
 
-- クエリ: `keyword`、`groupTag`、`sortBy`、`limit`（既定20）、`offset`（既定0）
+- クエリ: `keyword`、`groupTag`、`sortBy`、`limit`（既定20・最大120。超過は120に丸める）、`offset`（既定0）
 - 返却: `{ success, groupTags, <一覧と総数> }`。一覧の各要素に `id` と `image_updated_at` を含みます。
 - `groupTags` はグループタグ名と件数の集計で、ID はありません。
 - 1ページの件数分、画像ファイルの更新時刻を読みます。
