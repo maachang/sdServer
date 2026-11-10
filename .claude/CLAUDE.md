@@ -20,7 +20,7 @@
 - **無料 SSL 証明書 (Let's Encrypt / Certbot)**:
   - HTTPS (443) 終端、および HTTP (80) での ACME チャレンジ (HTTP-01) はすべて Nginx 側で一元管理します。
   - 証明書自動更新時は `nginx -s reload` による無停止反映を行います。
-  - maachang (Bun.serve) 側はローカルポート（HTTP: localhost:3000 等）でリクエストを受け付けます。
+  - maachang (Bun.serve) 側はローカルポート（HTTP: localhost:3010 等）でリクエストを受け付けます。
   - クライアント IP 等の取得は Nginx から渡される `X-Forwarded-For` / `X-Real-IP` を利用します。
 
 # 作業領域（.claudeWork）

@@ -58,13 +58,13 @@
 
 ```bash
 # 画像の一覧（id と image_updated_at が各要素に入る）
-curl 'http://localhost:3000/api/images?limit=20'
+curl 'http://localhost:3010/api/images?limit=20'
 
 # ID 指定で最新の画像を保存する
-curl -o 83.png 'http://localhost:3000/api/imageFile?id=83'
+curl -o 83.png 'http://localhost:3010/api/imageFile?id=83'
 
 # 更新の有無を調べる（前回の image_updated_at と比べる）
-curl 'http://localhost:3000/api/image?id=83'
+curl 'http://localhost:3010/api/image?id=83'
 ```
 
 ## 関連ファイル

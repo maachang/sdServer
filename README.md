@@ -70,7 +70,7 @@ sdServer/
 │   ├── env.json              # 共通環境設定
 │   ├── localLlm.json         # ローカル LLM 設定
 │   ├── sdServer.json         # SD サーバー定義・共通defaults・モデル系統設定
-│   └── server.json           # HTTP サーバー設定 (ポート 3000)
+│   └── server.json           # HTTP サーバー設定 (ポート 3010)
 ├── lib/                      # サーバーサイド共通ライブラリ
 │   ├── imageModel.js         # SQLite を用いた images テーブルの CRUD & 自動補完
 │   ├── sdClient.js           # SD サーバー通信 (/sdcpp/v1 非同期ジョブ & 中断)
@@ -116,7 +116,7 @@ npm start
 ```
 
 ### 🌐 アクセス URL
-- **画像履歴・ギャラリー**: [http://localhost:3000/menu.html](http://localhost:3000/menu.html)
-- **画像生成**: [http://localhost:3000/generate.html](http://localhost:3000/generate.html)
-- **SD サーバー設定**: [http://localhost:3000/sdServers.html](http://localhost:3000/sdServers.html)
-- **LLM モデル設定**: [http://localhost:3000/models.html](http://localhost:3000/models.html)
+- **画像履歴・ギャラリー**: [http://localhost:3010/menu.html](http://localhost:3010/menu.html)
+- **画像生成**: [http://localhost:3010/generate.html](http://localhost:3010/generate.html)
+- **SD サーバー設定**: [http://localhost:3010/sdServers.html](http://localhost:3010/sdServers.html)
+- **LLM モデル設定**: [http://localhost:3010/models.html](http://localhost:3010/models.html)
