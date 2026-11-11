@@ -1,14 +1,15 @@
 {
-  "activeServer": "z-image",
+  "activeServer": "server-1310",
   "servers": [
     {
       "id": "z-image",
-      "name": "z-image",
+      "name": "z-image(231)",
       "modelType": "natural",
       "baseUrl": "http://192.168.0.231:8080",
       "endpoint": "/sdapi/v1/txt2img",
       "timeoutMs": 600000,
       "description": "z-imageで実施",
+      "groupId": "z-image",
       "defaults": {
         "steps": 8,
         "cfg_scale": 1
@@ -22,9 +23,38 @@
       "endpoint": "/sdapi/v1/txt2img",
       "timeoutMs": 600000,
       "description": "gpt2.1",
+      "groupId": "gpt2.1_turbo",
       "defaults": {
         "width": 512,
         "height": 512,
+        "steps": 8,
+        "cfg_scale": 1
+      }
+    },
+    {
+      "id": "server-9955",
+      "name": "z-image(229)",
+      "modelType": "natural",
+      "baseUrl": "http://192.168.0.229:8080",
+      "endpoint": "/sdapi/v1/txt2img",
+      "timeoutMs": 600000,
+      "description": "z-imageで実施",
+      "groupId": "z-image",
+      "defaults": {
+        "steps": 8,
+        "cfg_scale": 1
+      }
+    },
+    {
+      "id": "server-1983",
+      "name": "gpt2.1 turbo(228)",
+      "modelType": "natural",
+      "baseUrl": "http://192.168.0.228:8080",
+      "endpoint": "/sdapi/v1/txt2img",
+      "timeoutMs": 600000,
+      "description": "gpt2.1",
+      "groupId": "gpt2.1_turbo",
+      "defaults": {
         "steps": 8,
         "cfg_scale": 1
       }
